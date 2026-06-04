@@ -42,10 +42,12 @@ void udpReceiver(SensorManager& sensorManager)
             
             getline(ss, token, ',');
             
-            bool isHips = (token == "HIPS");
+            bool isHips  = (token == "HIPS");
             bool isChest = (token == "CHEST");
+            bool isLUA   = (token == "L_UA");
+            bool isLFA   = (token == "L_FA");
             
-            if (!isHips && !isChest)
+            if (!isHips && !isChest && !isLUA && !isLFA)
                 continue;
             
             float w, x, y, z;
@@ -57,11 +59,10 @@ void udpReceiver(SensorManager& sensorManager)
             
             glm::quat q = glm::normalize(glm::quat(w, x, y, z));
             
-            if (isHips) {
-                sensorManager.setHipsQuat(q);
-            } else {
-                sensorManager.setChestQuat(q);
-            }
+            if      (isHips)  sensorManager.setHipsQuat(q);
+            else if (isChest) sensorManager.setChestQuat(q);
+            else if (isLUA)   sensorManager.setLUAQuat(q);
+            else if (isLFA)   sensorManager.setLFAQuat(q);
         }
         catch(...) {}
     }

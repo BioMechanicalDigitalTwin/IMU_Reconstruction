@@ -30,7 +30,8 @@ void Renderer::setupLighting()
     glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
 }
 
-void Renderer::render(const glm::quat& correctedQ1, const glm::quat& correctedQ2)
+void Renderer::render(const glm::quat& correctedQ1, const glm::quat& correctedQ2,
+                      const glm::quat& correctedLUA, const glm::quat& correctedLFA)
 {
     glClearColor(0.05f, 0.05f, 0.08f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -39,7 +40,6 @@ void Renderer::render(const glm::quat& correctedQ1, const glm::quat& correctedQ2
     glLoadIdentity();
     
     float aspect = (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT;
-    
     glFrustum(-aspect, aspect, -1.0f, 1.0f, 2.0f, 100.0f);
     
     glMatrixMode(GL_MODELVIEW);
@@ -50,13 +50,11 @@ void Renderer::render(const glm::quat& correctedQ1, const glm::quat& correctedQ2
     
     drawWorldAxes();
     
-    // Hand 1: HIPS — offset to the left, warm skin tone
-    drawArm(glm::vec3(-3.5f, 0.0f, 0.0f), correctedQ1,
-            0.9f, 0.8f, 0.7f, false);
-    
-    // Hand 2: CHEST — offset to the right, cool tint to distinguish
-    drawArm(glm::vec3(3.5f, 0.0f, 0.0f), correctedQ2,
-            0.7f, 0.8f, 0.9f, true);
+    // worldOffset is now the SHOULDER (fixed hinge point)
+    drawArm(glm::vec3(-7.0f, 0.0f, 0.0f), correctedQ1,
+            0.9f, 0.8f, 0.7f, false, correctedLUA, true);
+    drawArm(glm::vec3( 7.0f, 0.0f, 0.0f), correctedQ2,
+            0.7f, 0.8f, 0.9f, true, correctedLFA, true);
 }
 
 void Renderer::drawWorldAxes()
@@ -82,7 +80,6 @@ void Renderer::drawCylinder(glm::vec3 start, glm::vec3 end, float radius, int se
     float length = glm::length(dir);
     dir = glm::normalize(dir);
     
-    // Find perpendicular vectors
     glm::vec3 perp1, perp2;
     if (fabs(dir.x) < 0.9f) {
         perp1 = glm::normalize(glm::cross(dir, glm::vec3(1.0f, 0.0f, 0.0f)));
@@ -101,7 +98,7 @@ void Renderer::drawCylinder(glm::vec3 start, glm::vec3 end, float radius, int se
         circle2.push_back(end + offset);
     }
     
-    glColor3f(r * 0.8f, g * 0.8f, b * 0.8f); // Darker for sides
+    glColor3f(r * 0.8f, g * 0.8f, b * 0.8f);
     glBegin(GL_QUAD_STRIP);
     for (int i = 0; i <= segments; i++) {
         int idx = i % segments;
@@ -112,7 +109,6 @@ void Renderer::drawCylinder(glm::vec3 start, glm::vec3 end, float radius, int se
     }
     glEnd();
     
-    // End caps
     glColor3f(r, g, b);
     glBegin(GL_TRIANGLE_FAN);
     glNormal3f(-dir.x, -dir.y, -dir.z);
@@ -173,21 +169,16 @@ void Renderer::drawFinger(glm::vec3 base, glm::vec3 dir, float thickness, float 
     for (int i = 0; i < segments; i++) {
         glm::vec3 end = start + dir * segLength;
         drawCylinder(start, end, segThickness, 12, r, g, b);
-        
-        // Joint
         drawSphere(end, segThickness * 1.15f, 12, r * 0.9f, g * 0.9f, b * 0.9f);
-        
         start = end;
         segThickness *= 0.8f;
     }
     
-    // Fingertip
     drawSphere(start, segThickness * 1.2f, 12, r * 0.95f, g * 0.8f, b * 0.7f);
 }
 
 void Renderer::drawInfinityStone(glm::vec3 position, float size, float r, float g, float b)
 {
-    // Outer glow rings
     glDisable(GL_LIGHTING);
     
     for (int i = 0; i < 3; i++) {
@@ -196,15 +187,12 @@ void Renderer::drawInfinityStone(glm::vec3 position, float size, float r, float 
         drawSphere(position, glowSize, 12, r * (1.0f - i * 0.1f), g * (1.0f - i * 0.1f), b * (1.0f - i * 0.1f));
     }
     
-    // Main stone
     glColor3f(r, g, b);
     drawSphere(position, size, 16, r, g, b);
     
-    // Inner bright core
     glColor3f(r * 1.3f, g * 1.3f, b * 1.3f);
     drawSphere(position, size * 0.6f, 12, r * 1.3f, g * 1.3f, b * 1.3f);
     
-    // Highlight reflection
     glm::vec3 highlightPos = position + glm::vec3(size * 0.4f, size * 0.4f, size * 0.3f);
     glColor3f(1.0f, 1.0f, 1.0f);
     drawSphere(highlightPos, size * 0.2f, 8, 1.0f, 1.0f, 1.0f);
@@ -217,18 +205,17 @@ void Renderer::drawGauntletLines(glm::vec3 palmCenter, glm::vec3 handDir, glm::v
     glDisable(GL_LIGHTING);
     glLineWidth(2.0f);
     
-    // Gold lines connecting stones (circular pattern on back of hand)
     glm::vec3 backOfHand = palmCenter + handUp * halfPalmThickness * 0.5f;
     float stoneRadius = 0.35f;
     float stoneHeight = halfPalmThickness * 1.2f;
     
     float angles[6] = {
-        0.0f,                              // Top
-        60.0f * (float)M_PI / 180.0f,      // Top-right
-        120.0f * (float)M_PI / 180.0f,     // Bottom-right
-        180.0f * (float)M_PI / 180.0f,     // Bottom
-        240.0f * (float)M_PI / 180.0f,     // Bottom-left
-        300.0f * (float)M_PI / 180.0f      // Top-left
+        0.0f,
+        60.0f  * (float)M_PI / 180.0f,
+        120.0f * (float)M_PI / 180.0f,
+        180.0f * (float)M_PI / 180.0f,
+        240.0f * (float)M_PI / 180.0f,
+        300.0f * (float)M_PI / 180.0f
     };
     
     glm::vec3 stonePositions[6];
@@ -241,15 +228,13 @@ void Renderer::drawGauntletLines(glm::vec3 palmCenter, glm::vec3 handDir, glm::v
             handUp * stoneHeight;
     }
     
-    // Draw connecting lines between stones
-    glColor3f(0.8f, 0.6f, 0.0f); // Gold
+    glColor3f(0.8f, 0.6f, 0.0f);
     glBegin(GL_LINES);
     for (int i = 0; i < 6; i++) {
         int next = (i + 1) % 6;
         glVertex3f(stonePositions[i].x, stonePositions[i].y, stonePositions[i].z);
         glVertex3f(stonePositions[next].x, stonePositions[next].y, stonePositions[next].z);
     }
-    // Diagonal lines
     glVertex3f(stonePositions[0].x, stonePositions[0].y, stonePositions[0].z);
     glVertex3f(stonePositions[3].x, stonePositions[3].y, stonePositions[3].z);
     glVertex3f(stonePositions[1].x, stonePositions[1].y, stonePositions[1].z);
@@ -258,7 +243,6 @@ void Renderer::drawGauntletLines(glm::vec3 palmCenter, glm::vec3 handDir, glm::v
     glVertex3f(stonePositions[5].x, stonePositions[5].y, stonePositions[5].z);
     glEnd();
     
-    // Gauntlet lines on wrist
     glm::vec3 wristBase = backOfHand + handDir * halfPalmLength * 0.5f;
     glColor3f(0.7f, 0.5f, 0.0f);
     glBegin(GL_LINES);
@@ -277,43 +261,42 @@ void Renderer::drawGauntletLines(glm::vec3 palmCenter, glm::vec3 handDir, glm::v
 }
 
 void Renderer::drawArm(glm::vec3 worldOffset, glm::quat correctedQ,
-                        float skinR, float skinG, float skinB, bool mirrorThumb)
+                        float skinR, float skinG, float skinB, bool mirrorThumb,
+                        glm::quat upperArmQ, bool hasUpperArmQ)
 {
-    glm::vec3 shoulder = worldOffset + glm::vec3(0.0f, 4.0f, 0.0f);
-    glm::vec3 elbow    = worldOffset;
+    // worldOffset is the SHOULDER — the fixed anchor point
+    glm::vec3 shoulder = worldOffset;
 
-    glm::vec3 forearmDir =
-        glm::normalize(correctedQ * glm::vec3(0.0f, -1.0f, 0.0f));
+    // Upper arm hangs downward from shoulder, driven by upperArmQ
+    glm::vec3 upperArmDir = hasUpperArmQ
+        ? glm::normalize(upperArmQ * glm::vec3(0.0f, -1.0f, 0.0f))
+        : glm::vec3(0.0f, -1.0f, 0.0f);
+
+    // Elbow is derived from shoulder + upper arm orientation
+    glm::vec3 elbow = shoulder + upperArmDir * 4.0f;
+
+    // Forearm direction driven by correctedQ (forearm sensor), chained off elbow
+    glm::vec3 forearmDir = glm::normalize(correctedQ * glm::vec3(0.0f, -1.0f, 0.0f));
 
     float forearmLength = 4.0f;
-
     glm::vec3 wrist = elbow + forearmDir * forearmLength;
 
-    // Draw upper arm
-    drawCylinder(shoulder, elbow, 0.25f, 16, skinR * 1.0f,  skinG * 1.0f,  skinB * 1.0f);
-    drawSphere  (shoulder, 0.3f,  16,    skinR * 0.95f, skinG * 0.95f, skinB * 0.95f);
+    // Draw upper arm: shoulder → elbow
+    drawSphere  (shoulder, 0.3f,  16, skinR * 0.95f, skinG * 0.95f, skinB * 0.95f);
+    drawCylinder(shoulder, elbow, 0.25f, 16, skinR, skinG, skinB);
 
-    // Draw forearm
+    // Draw forearm: elbow → wrist
+    drawSphere  (elbow, 0.28f, 16, skinR * 0.90f, skinG * 0.90f, skinB * 0.90f);
     drawCylinder(elbow, wrist, 0.22f, 16, skinR * 0.95f, skinG * 0.95f, skinB * 0.95f);
-    drawSphere  (elbow, 0.28f, 16,    skinR * 0.90f, skinG * 0.90f, skinB * 0.90f);
-    drawSphere  (wrist, 0.25f, 16,    skinR * 0.90f, skinG * 0.90f, skinB * 0.90f);
+    drawSphere  (wrist, 0.25f, 16, skinR * 0.90f, skinG * 0.90f, skinB * 0.90f);
 
-    glm::vec3 handDir =
-        correctedQ * glm::vec3(0.0f,-1.0f,0.0f);
-
-    glm::vec3 handRight =
-        correctedQ * glm::vec3(1.0f,0.0f,0.0f);
-
-    glm::vec3 handUp =
-        correctedQ * glm::vec3(0.0f,0.0f,1.0f);
-
-    handDir   = glm::normalize(handDir);
-    handRight = glm::normalize(handRight);
-    handUp    = glm::normalize(handUp);
+    // Hand orientation derived from forearm sensor
+    glm::vec3 handDir   = glm::normalize(correctedQ * glm::vec3(0.0f, -1.0f, 0.0f));
+    glm::vec3 handRight = glm::normalize(correctedQ * glm::vec3(1.0f,  0.0f, 0.0f));
+    glm::vec3 handUp    = glm::normalize(correctedQ * glm::vec3(0.0f,  0.0f, 1.0f));
 
     glm::vec3 palmCenter = wrist + handDir * 0.5f;
 
-    // Draw palm as a flattened box
     float palmWidth         = 1.2f;
     float palmThickness     = 0.15f;
     float palmLength        = 1.0f;
@@ -321,7 +304,6 @@ void Renderer::drawArm(glm::vec3 worldOffset, glm::quat correctedQ,
     float halfPalmThickness = palmThickness * 0.5f;
     float halfPalmLength    = palmLength    * 0.5f;
 
-    // Draw palm using a box-like structure
     glm::vec3 palmCorners[8];
     palmCorners[0] = wrist + handRight * halfPalmWidth  + handUp * halfPalmThickness;
     palmCorners[1] = wrist + handRight * halfPalmWidth  - handUp * halfPalmThickness;
@@ -332,7 +314,6 @@ void Renderer::drawArm(glm::vec3 worldOffset, glm::quat correctedQ,
     palmCorners[6] = palmCenter - handRight * halfPalmWidth  + handUp * halfPalmThickness;
     palmCorners[7] = palmCenter - handRight * halfPalmWidth  - handUp * halfPalmThickness;
 
-    // Draw palm faces
     glColor3f(skinR * 1.0f, skinG * 0.85f, skinB * 0.70f);
 
     // Front face
@@ -399,32 +380,28 @@ void Renderer::drawArm(glm::vec3 worldOffset, glm::quat correctedQ,
     // DRAW INFINITY GAUNTLET (Stones + Lines on back of hand)
     // ============================================================
 
-    // Draw gauntlet connector lines
     drawGauntletLines(palmCenter, handDir, handRight, handUp, halfPalmWidth, halfPalmThickness, halfPalmLength);
 
-    // Draw Infinity Stones on back of hand
     glm::vec3 backOfHand = palmCenter - handUp * halfPalmThickness * 0.5f;
     float stoneRadius = 0.35f;
     float stoneHeight = halfPalmThickness * 1.2f;
 
-    // Stone positions in a circular arrangement
     float angles[6] = {
-        0.0f,                              // Top
-        60.0f  * (float)M_PI / 180.0f,    // Top-right
-        120.0f * (float)M_PI / 180.0f,    // Bottom-right
-        180.0f * (float)M_PI / 180.0f,    // Bottom
-        240.0f * (float)M_PI / 180.0f,    // Bottom-left
-        300.0f * (float)M_PI / 180.0f     // Top-left
+        0.0f,
+        60.0f  * (float)M_PI / 180.0f,
+        120.0f * (float)M_PI / 180.0f,
+        180.0f * (float)M_PI / 180.0f,
+        240.0f * (float)M_PI / 180.0f,
+        300.0f * (float)M_PI / 180.0f
     };
 
-    // Stone colors (Infinity Stones)
     float stoneColors[6][3] = {
-        {0.0f,  1.0f,  0.0f},    // Time (Green)
-        {1.0f,  0.84f, 0.0f},    // Mind (Yellow/Gold)
-        {0.0f,  0.0f,  1.0f},    // Space (Blue)
-        {1.0f,  0.0f,  0.0f},    // Reality (Red)
-        {0.58f, 0.0f,  0.83f},   // Power (Purple)
-        {1.0f,  0.5f,  0.0f}     // Soul (Orange)
+        {0.0f,  1.0f,  0.0f},
+        {1.0f,  0.84f, 0.0f},
+        {0.0f,  0.0f,  1.0f},
+        {1.0f,  0.0f,  0.0f},
+        {0.58f, 0.0f,  0.83f},
+        {1.0f,  0.5f,  0.0f}
     };
 
     glm::vec3 stonePositions[6];
@@ -443,29 +420,24 @@ void Renderer::drawArm(glm::vec3 worldOffset, glm::quat correctedQ,
     // Draw fingers
     float fingerSpread = 0.22f;
 
-    // Index finger
-    glm::vec3 indexBase = palmCenter + handRight * fingerSpread * 2.0f + handDir * halfPalmLength;
+    glm::vec3 indexBase  = palmCenter + handRight * fingerSpread * 2.0f + handDir * halfPalmLength;
     drawFinger(indexBase, handDir, 0.08f, skinR * 0.95f, skinG * 0.82f, skinB * 0.65f);
 
-    // Middle finger
     glm::vec3 middleBase = palmCenter + handDir * halfPalmLength;
     drawFinger(middleBase, handDir, 0.09f, skinR * 0.95f, skinG * 0.82f, skinB * 0.65f);
 
-    // Ring finger
-    glm::vec3 ringBase = palmCenter - handRight * fingerSpread * 1.8f + handDir * halfPalmLength;
+    glm::vec3 ringBase   = palmCenter - handRight * fingerSpread * 1.8f + handDir * halfPalmLength;
     drawFinger(ringBase, handDir, 0.08f, skinR * 0.95f, skinG * 0.82f, skinB * 0.65f);
 
-    // Pinky finger
-    glm::vec3 pinkyBase = palmCenter - handRight * fingerSpread * 3.6f + handDir * halfPalmLength;
+    glm::vec3 pinkyBase  = palmCenter - handRight * fingerSpread * 3.6f + handDir * halfPalmLength;
     drawFinger(pinkyBase, handDir * 0.95f + handRight * 0.1f, 0.07f, skinR * 0.95f, skinG * 0.82f, skinB * 0.65f);
 
-    // Thumb
     float thumbSide = mirrorThumb ? -1.0f : 1.0f;
     glm::vec3 thumbBase = wrist + handRight * halfPalmWidth * 0.8f * thumbSide + handDir * 0.3f;
     glm::vec3 thumbDir  = glm::normalize(handDir * 0.5f + handRight * 0.7f * thumbSide + handUp * 0.3f);
     drawFinger(thumbBase, thumbDir, 0.1f, skinR * 1.0f, skinG * 0.82f, skinB * 0.65f);
 
-    // Local sensor axes at elbow
+    // Local sensor axes drawn at elbow joint
     glDisable(GL_LIGHTING);
     glm::vec3 localX = correctedQ * glm::vec3(-1.0f, 0.0f, 0.0f);
     glm::vec3 localY = correctedQ * glm::vec3( 0.0f, 1.0f, 0.0f);

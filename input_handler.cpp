@@ -7,12 +7,10 @@ InputHandler::InputHandler(SensorManager& sensorManager)
 
 void InputHandler::handleKey(int key)
 {
-    if (key == GLFW_KEY_C) {
-        sensorManager.calibrateHips();
-    }
-    else if (key == GLFW_KEY_V) {
-        sensorManager.calibrateChest();
-    }
+    if      (key == GLFW_KEY_C) { sensorManager.calibrateHips();  }
+    else if (key == GLFW_KEY_V) { sensorManager.calibrateChest(); }
+    else if (key == GLFW_KEY_B) { sensorManager.calibrateLUA();   }
+    else if (key == GLFW_KEY_N) { sensorManager.calibrateLFA();   }
 }
 
 void keyCallbackDispatcher(GLFWwindow* window, int key, int scancode, 

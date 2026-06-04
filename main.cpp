@@ -20,7 +20,7 @@ int main()
         return -1;
 
     GLFWwindow* window = glfwCreateWindow(1200, 800, 
-        "Dual IMU Visualizer - HIPS & CHEST", nullptr, nullptr);
+        "Quad IMU Visualizer - HIPS, CHEST, L_UA, L_FA", nullptr, nullptr);
 
     if(!window)
         return -1;
@@ -37,10 +37,12 @@ int main()
 
     while(!glfwWindowShouldClose(window))
     {
-        glm::quat correctedQ1 = sensorManager.getCorrectedHipsQuat();
-        glm::quat correctedQ2 = sensorManager.getCorrectedChestQuat();
+        glm::quat correctedQ1  = sensorManager.getCorrectedHipsQuat();
+        glm::quat correctedQ2  = sensorManager.getCorrectedChestQuat();
+        glm::quat correctedLUA = sensorManager.getCorrectedLUAQuat();
+        glm::quat correctedLFA = sensorManager.getCorrectedLFAQuat();
 
-        renderer.render(correctedQ1, correctedQ2);
+        renderer.render(correctedQ1, correctedQ2, correctedLUA, correctedLFA);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
