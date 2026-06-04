@@ -264,21 +264,23 @@ void Renderer::drawArm(glm::vec3 worldOffset, glm::quat correctedQ,
                         float skinR, float skinG, float skinB, bool mirrorThumb,
                         glm::quat upperArmQ, bool hasUpperArmQ)
 {
-    // worldOffset is the SHOULDER — the fixed anchor point
+    // worldOffset is the SHOULDER - the fixed anchor point.
     glm::vec3 shoulder = worldOffset;
+    const glm::vec3 segmentDown(0.0f, -1.0f, 0.0f);
+    const float upperArmLength = 4.0f;
+    const float forearmLength = 4.0f;
 
-    // Upper arm hangs downward from shoulder, driven by upperArmQ
+    // L_UA/L_FA drive shoulder-to-elbow. HIPS/CHEST drive elbow-to-wrist.
     glm::vec3 upperArmDir = hasUpperArmQ
-        ? glm::normalize(upperArmQ * glm::vec3(0.0f, -1.0f, 0.0f))
-        : glm::vec3(0.0f, -1.0f, 0.0f);
+        ? glm::normalize(upperArmQ * segmentDown)
+        : segmentDown;
 
     // Elbow is derived from shoulder + upper arm orientation
-    glm::vec3 elbow = shoulder + upperArmDir * 4.0f;
+    glm::vec3 elbow = shoulder + upperArmDir * upperArmLength;
 
     // Forearm direction driven by correctedQ (forearm sensor), chained off elbow
-    glm::vec3 forearmDir = glm::normalize(correctedQ * glm::vec3(0.0f, -1.0f, 0.0f));
+    glm::vec3 forearmDir = glm::normalize(correctedQ * segmentDown);
 
-    float forearmLength = 4.0f;
     glm::vec3 wrist = elbow + forearmDir * forearmLength;
 
     // Draw upper arm: shoulder → elbow
@@ -291,7 +293,7 @@ void Renderer::drawArm(glm::vec3 worldOffset, glm::quat correctedQ,
     drawSphere  (wrist, 0.25f, 16, skinR * 0.90f, skinG * 0.90f, skinB * 0.90f);
 
     // Hand orientation derived from forearm sensor
-    glm::vec3 handDir   = glm::normalize(correctedQ * glm::vec3(0.0f, -1.0f, 0.0f));
+    glm::vec3 handDir   = forearmDir;
     glm::vec3 handRight = glm::normalize(correctedQ * glm::vec3(1.0f,  0.0f, 0.0f));
     glm::vec3 handUp    = glm::normalize(correctedQ * glm::vec3(0.0f,  0.0f, 1.0f));
 
