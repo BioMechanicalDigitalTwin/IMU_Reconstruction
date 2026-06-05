@@ -7,8 +7,10 @@ g++ -std=c++17 -o imu_visualizer \
     udp_receiver.cpp \
     input_handler.cpp \
     renderer.cpp \
+    gltf_model.cpp \
     -lglfw -lGL -lGLU -lpthread \
-    -I/usr/include/glm
+    -I/usr/include/glm \
+    -Ithird_party
 ```
 
 ## To run the executable
@@ -16,6 +18,9 @@ g++ -std=c++17 -o imu_visualizer \
 ```bash
 ./imu_visualizer
 ```
+
+Keep `human.glb` in the same directory as the executable. If it cannot be
+loaded, the program falls back to the original procedural body renderer.
 
 ## Controls
 

@@ -3,6 +3,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+#include "gltf_model.h"
+
 enum class CameraView { FRONT, BACK, SIDE };
 
 class Renderer {
@@ -83,4 +85,6 @@ private:
 
     const int WINDOW_WIDTH  = 1400;
     const int WINDOW_HEIGHT = 900;
+
+    GltfModel humanModel;
 };

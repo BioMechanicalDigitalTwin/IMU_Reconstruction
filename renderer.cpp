@@ -20,6 +20,7 @@ void Renderer::initialize()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     setupLighting();
+    humanModel.load("human.glb");
 }
 
 void Renderer::setupLighting()
@@ -86,9 +87,13 @@ void Renderer::render(const glm::quat& leftForearmQ,  const glm::quat& rightFore
     }
 
     setupLighting();
-    drawBody();
-    drawArm(leftShoulderPos,  leftUpperArmQ,  leftForearmQ,  false);
-    drawArm(rightShoulderPos, rightUpperArmQ, rightForearmQ, true);
+    if (humanModel.isLoaded()) {
+        humanModel.draw(leftForearmQ, rightForearmQ, leftUpperArmQ, rightUpperArmQ);
+    } else {
+        drawBody();
+        drawArm(leftShoulderPos,  leftUpperArmQ,  leftForearmQ,  false);
+        drawArm(rightShoulderPos, rightUpperArmQ, rightForearmQ, true);
+    }
     drawWorldAxes();
     drawTrackingAxesHud(rightForearmQ, leftUpperArmQ, leftForearmQ, leftForearmQ);
 }
