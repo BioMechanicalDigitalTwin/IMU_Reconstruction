@@ -7,11 +7,17 @@ InputHandler::InputHandler(SensorManager& sensorManager)
 
 void InputHandler::handleKey(int key)
 {
-    if      (key == GLFW_KEY_C) { sensorManager.calibrateHips();  }
-    else if (key == GLFW_KEY_V) { sensorManager.calibrateChest(); }
-    else if (key == GLFW_KEY_B) { sensorManager.calibrateLUA();   }
-    else if (key == GLFW_KEY_N) { sensorManager.calibrateLFA();   }
-    else if (key == GLFW_KEY_M) { sensorManager.toggleQuaternionConvention(); }
+    if      (key == GLFW_KEY_C)     { sensorManager.calibrateHips();  }
+    else if (key == GLFW_KEY_V)     { sensorManager.calibrateChest(); }
+    else if (key == GLFW_KEY_B)     { sensorManager.calibrateLUA();   }
+    else if (key == GLFW_KEY_N)     { sensorManager.calibrateLFA();   }
+    else if (key == GLFW_KEY_M)     { sensorManager.toggleQuaternionConvention(); }
+    else if (key == GLFW_KEY_SPACE) {
+        sensorManager.calibrateHips();
+        sensorManager.calibrateChest();
+        sensorManager.calibrateLUA();
+        sensorManager.calibrateLFA();
+    }
 }
 
 void keyCallbackDispatcher(GLFWwindow* window, int key, int scancode, 

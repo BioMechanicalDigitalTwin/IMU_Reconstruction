@@ -19,7 +19,7 @@ int main()
     if(!glfwInit())
         return -1;
 
-    GLFWwindow* window = glfwCreateWindow(1200, 800, 
+    GLFWwindow* window = glfwCreateWindow(1400, 900, 
         "Quad IMU Visualizer - HIPS, CHEST, L_UA, L_FA", nullptr, nullptr);
 
     if(!window)
@@ -32,11 +32,19 @@ int main()
     glfwSetKeyCallback(window, keyCallbackDispatcher);
     glfwSetWindowUserPointer(window, &inputHandler);
 
+
     Renderer renderer;
     renderer.initialize();
 
     while(!glfwWindowShouldClose(window))
     {
+        if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+            renderer.setCameraView(CameraView::FRONT);
+        if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+            renderer.setCameraView(CameraView::BACK);
+        if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+            renderer.setCameraView(CameraView::SIDE);
+
         glm::quat correctedQ1  = sensorManager.getCorrectedHipsQuat();
         glm::quat correctedQ2  = sensorManager.getCorrectedChestQuat();
         glm::quat correctedLUA = sensorManager.getCorrectedLUAQuat();
