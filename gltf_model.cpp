@@ -106,6 +106,11 @@ bool GltfModel::load(const std::string& path)
         if (src.has_scale) {
             dst.scale = glm::vec3(src.scale[0], src.scale[1], src.scale[2]);
         }
+
+        if (dst.name == "mixamorig:LeftShoulder" || dst.name == "mixamorig:RightShoulder") {
+            constexpr float kShoulderWidthScale = 4.0f;
+            dst.translation.x *= kShoulderWidthScale;
+        }
         nodeMap[&src] = static_cast<int>(i);
     }
 
