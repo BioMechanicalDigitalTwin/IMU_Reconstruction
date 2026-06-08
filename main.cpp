@@ -20,7 +20,7 @@ int main()
         return -1;
 
     GLFWwindow* window = glfwCreateWindow(1400, 900, 
-        "Quad IMU Visualizer - HIPS, CHEST, L_UA, L_FA", nullptr, nullptr);
+        "IMU Visualizer - L_FA, R_FA, L_UA, R_UA, L_TH, L_SH, R_TH, R_SH", nullptr, nullptr);
 
     if(!window)
         return -1;
@@ -45,18 +45,19 @@ int main()
         if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
             renderer.setCameraView(CameraView::SIDE);
 
-        glm::quat correctedQ1  = sensorManager.getCorrectedHipsQuat();
-        glm::quat correctedQ2  = sensorManager.getCorrectedChestQuat();
+        glm::quat correctedLFA = sensorManager.getCorrectedLFAQuat();   // was HIPS → left forearm
+        glm::quat correctedRFA = sensorManager.getCorrectedRFAQuat();   // was CHEST → right forearm
         glm::quat correctedLUA = sensorManager.getCorrectedLUAQuat();
-        glm::quat correctedLFA = sensorManager.getCorrectedLFAQuat();
+        glm::quat correctedRUA = sensorManager.getCorrectedRUAQuat();   // was L_FA → right upper arm
 
         glm::quat correctedLTH = sensorManager.getCorrectedLTHQuat();
         glm::quat correctedLSH = sensorManager.getCorrectedLSHQuat();
         glm::quat correctedRTH = sensorManager.getCorrectedRTHQuat();
         glm::quat correctedRSH = sensorManager.getCorrectedRSHQuat();
 
-        renderer.render(correctedQ1, correctedQ2, correctedLUA, correctedLFA,
-                        correctedLTH, correctedRTH, correctedLSH, correctedRSH);        glfwSwapBuffers(window);
+        renderer.render(correctedLFA, correctedRFA, correctedLUA, correctedRUA,
+                        correctedLTH, correctedRTH, correctedLSH, correctedRSH);
+        glfwSwapBuffers(window);
         glfwPollEvents();
     }
 

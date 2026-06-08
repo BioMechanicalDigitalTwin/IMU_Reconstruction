@@ -42,16 +42,16 @@ void udpReceiver(SensorManager& sensorManager)
             
             getline(ss, token, ',');
             
-            bool isHips  = (token == "HIPS");
-            bool isChest = (token == "CHEST");
+            bool isLFA   = (token == "L_FA");   
+            bool isRFA   = (token == "R_FA");   
             bool isLUA   = (token == "L_UA");
-            bool isLFA   = (token == "L_FA");
+            bool isRUA   = (token == "R_UA");   
             bool isLTH   = (token == "L_TH");
             bool isLSH   = (token == "L_SH");
             bool isRTH   = (token == "R_TH");
             bool isRSH   = (token == "R_SH");
 
-            if (!isHips && !isChest && !isLUA && !isLFA &&
+            if (!isLFA && !isRFA && !isLUA && !isRUA &&
                 !isLTH  && !isLSH   && !isRTH && !isRSH)
                 continue;
             
@@ -64,10 +64,10 @@ void udpReceiver(SensorManager& sensorManager)
             
             glm::quat q = glm::normalize(glm::quat(w, x, y, z));
             
-            if      (isHips)  sensorManager.setHipsQuat(q);
-            else if (isChest) sensorManager.setChestQuat(q);
+            if      (isLFA)   sensorManager.setLFAQuat(q);
+            else if (isRFA)   sensorManager.setRFAQuat(q);
             else if (isLUA)   sensorManager.setLUAQuat(q);
-            else if (isLFA)   sensorManager.setLFAQuat(q);
+            else if (isRUA)   sensorManager.setRUAQuat(q);
             else if (isLTH)   sensorManager.setLTHQuat(q);
             else if (isLSH)   sensorManager.setLSHQuat(q);
             else if (isRTH)   sensorManager.setRTHQuat(q);

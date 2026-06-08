@@ -8,26 +8,26 @@ class SensorManager {
 public:
     SensorManager();
     
-    void setHipsQuat(const glm::quat& q);
-    void setChestQuat(const glm::quat& q);
+    void setLFAQuat(const glm::quat& q);   // was HIPS
+    void setRFAQuat(const glm::quat& q);   // was CHEST
     void setLUAQuat(const glm::quat& q);
-    void setLFAQuat(const glm::quat& q);
+    void setRUAQuat(const glm::quat& q);   // was L_FA
     
-    glm::quat getHipsQuat() const;
-    glm::quat getChestQuat() const;
-    glm::quat getLUAQuat() const;
     glm::quat getLFAQuat() const;
+    glm::quat getRFAQuat() const;
+    glm::quat getLUAQuat() const;
+    glm::quat getRUAQuat() const;
     
-    void calibrateHips();
-    void calibrateChest();
+    void calibrateLFA();   // was HIPS
+    void calibrateRFA();   // was CHEST
     void calibrateLUA();
-    void calibrateLFA();
+    void calibrateRUA();   // was L_FA
     void toggleQuaternionConvention();
     
-    glm::quat getCorrectedHipsQuat() const;
-    glm::quat getCorrectedChestQuat() const;
-    glm::quat getCorrectedLUAQuat() const;
     glm::quat getCorrectedLFAQuat() const;
+    glm::quat getCorrectedRFAQuat() const;
+    glm::quat getCorrectedLUAQuat() const;
+    glm::quat getCorrectedRUAQuat() const;
 
     void setLTHQuat(const glm::quat& q);
     void setLSHQuat(const glm::quat& q);
@@ -57,21 +57,21 @@ private:
 
     std::atomic<int> quaternionMode;
 
-    // HIPS (hand 1)
+    // L_FA (was HIPS)
     mutable std::mutex quatMutex1;
-    glm::quat sensorQuat1;
+    glm::quat sensorQuatLFA;
     mutable std::mutex calibMutex1;
-    glm::quat calibrationReference1;
-    mutable glm::quat smoothedCorrected1;
-    mutable bool hasSmoothedCorrected1;
+    glm::quat calibrationReferenceLFA;
+    mutable glm::quat smoothedCorrectedLFA;
+    mutable bool hasSmoothedCorrectedLFA;
     
-    // CHEST (hand 2)
+    // R_FA (was CHEST)
     mutable std::mutex quatMutex2;
-    glm::quat sensorQuat2;
+    glm::quat sensorQuatRFA;
     mutable std::mutex calibMutex2;
-    glm::quat calibrationReference2;
-    mutable glm::quat smoothedCorrected2;
-    mutable bool hasSmoothedCorrected2;
+    glm::quat calibrationReferenceRFA;
+    mutable glm::quat smoothedCorrectedRFA;
+    mutable bool hasSmoothedCorrectedRFA;
 
     // L_UA (left upper arm)
     mutable std::mutex quatMutex3;
@@ -81,13 +81,13 @@ private:
     mutable glm::quat smoothedCorrected3;
     mutable bool hasSmoothedCorrected3;
 
-    // L_FA (right upper arm)
+    // R_UA (was L_FA)
     mutable std::mutex quatMutex4;
-    glm::quat sensorQuat4;
+    glm::quat sensorQuatRUA;
     mutable std::mutex calibMutex4;
-    glm::quat calibrationReference4;
-    mutable glm::quat smoothedCorrected4;
-    mutable bool hasSmoothedCorrected4;
+    glm::quat calibrationReferenceRUA;
+    mutable glm::quat smoothedCorrectedRUA;
+    mutable bool hasSmoothedCorrectedRUA;
 
     // L_TH (left thigh)
     mutable std::mutex quatMutex5;
