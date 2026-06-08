@@ -59,10 +59,17 @@ void Renderer::cycleCameraView()
 //  MAIN RENDER
 // ─────────────────────────────────────────────
 
-void Renderer::render(const glm::quat& leftForearmQ,  const glm::quat& rightForearmQ,
-                      const glm::quat& leftUpperArmQ, const glm::quat& rightUpperArmQ,
-                      const glm::quat& leftThighQ,    const glm::quat& rightThighQ,
-                      const glm::quat& leftShinQ,     const glm::quat& rightShinQ)
+void Renderer::render(
+    const glm::quat& leftForearmQ,
+    const glm::quat& rightForearmQ,
+    const glm::quat& leftUpperArmQ,
+    const glm::quat& rightUpperArmQ,
+    const glm::quat& leftThighQ,
+    const glm::quat& rightThighQ,
+    const glm::quat& leftShinQ,
+    const glm::quat& rightShinQ,
+    const glm::quat& hipsQ,
+    const glm::quat& chestQ)
 {
     glClearColor(0.07f, 0.07f, 0.12f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -93,8 +100,13 @@ void Renderer::render(const glm::quat& leftForearmQ,  const glm::quat& rightFore
 
     setupLighting();
     if (humanModel.isLoaded()) {
-        humanModel.draw(leftForearmQ, rightForearmQ, leftUpperArmQ, rightUpperArmQ,
-                        leftThighQ, rightThighQ, leftShinQ, rightShinQ);
+        humanModel.draw(
+            leftForearmQ, rightForearmQ,
+            leftUpperArmQ, rightUpperArmQ,
+            leftThighQ, rightThighQ,
+            leftShinQ, rightShinQ,
+            hipsQ, chestQ
+        );
     } else {
         drawBody();
         drawArm(leftShoulderPos,  leftUpperArmQ,  leftForearmQ,  false);
@@ -102,9 +114,17 @@ void Renderer::render(const glm::quat& leftForearmQ,  const glm::quat& rightFore
         drawLegSensor(leftHipPos,  leftThighQ,  leftShinQ,  false);
         drawLegSensor(rightHipPos, rightThighQ, rightShinQ, true);
     }
+
     drawWorldAxes();
-    drawTrackingAxesHud(leftForearmQ, rightForearmQ, leftUpperArmQ, rightUpperArmQ,
-                        leftThighQ, rightThighQ, leftShinQ, rightShinQ);}
+
+    drawTrackingAxesHud(
+        leftForearmQ, rightForearmQ,
+        leftUpperArmQ, rightUpperArmQ,
+        leftThighQ, rightThighQ,
+        leftShinQ, rightShinQ,
+        hipsQ, chestQ
+    );
+    }
 
 // ─────────────────────────────────────────────
 //  BODY  (real human proportions, ~7.5 heads tall)
@@ -400,7 +420,9 @@ void Renderer::drawTrackingAxesHud(const glm::quat& lFAQ,
                                    const glm::quat& lTHQ,
                                    const glm::quat& rTHQ,
                                    const glm::quat& lSHQ,
-                                   const glm::quat& rSHQ)
+                                   const glm::quat& rSHQ,
+                                   const glm::quat& hipsQ,
+                                   const glm::quat& chestQ)
 {
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -418,6 +440,7 @@ void Renderer::drawTrackingAxesHud(const glm::quat& lFAQ,
     const float gap   = 60.0f;
     const float x     = (float)WINDOW_WIDTH - 70.0f;
     const float x2    = x - 80.0f;
+    const float x3    = x2 - 80.0f;
     const float top   = (float)WINDOW_HEIGHT - 50.0f;
 
     // Labels and widgets — arms on right column, legs on second column
@@ -428,14 +451,18 @@ void Renderer::drawTrackingAxesHud(const glm::quat& lFAQ,
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
     };
 
-    drawLabel(x,  top,              "L_FA"); drawHudAxisWidget(x,  top,              lFAQ, scale);
-    drawLabel(x,  top - gap,        "R_FA"); drawHudAxisWidget(x,  top - gap,        rFAQ, scale);
-    drawLabel(x,  top - gap * 2.0f, "L_UA"); drawHudAxisWidget(x,  top - gap * 2.0f, lUAQ, scale);
-    drawLabel(x,  top - gap * 3.0f, "R_UA"); drawHudAxisWidget(x,  top - gap * 3.0f, rUAQ, scale);
-    drawLabel(x2, top,              "L_TH"); drawHudAxisWidget(x2, top,              lTHQ, scale);
-    drawLabel(x2, top - gap,        "R_TH"); drawHudAxisWidget(x2, top - gap,        rTHQ, scale);
-    drawLabel(x2, top - gap * 2.0f, "L_SH"); drawHudAxisWidget(x2, top - gap * 2.0f, lSHQ, scale);
-    drawLabel(x2, top - gap * 3.0f, "R_SH"); drawHudAxisWidget(x2, top - gap * 3.0f, rSHQ, scale);
+     
+
+    drawLabel(x,  top,              "L_FA");  drawHudAxisWidget(x,  top,              lFAQ,  scale);
+    drawLabel(x,  top - gap,        "R_FA");  drawHudAxisWidget(x,  top - gap,        rFAQ,  scale);
+    drawLabel(x,  top - gap * 2.0f, "L_UA");  drawHudAxisWidget(x,  top - gap * 2.0f, lUAQ,  scale);
+    drawLabel(x,  top - gap * 3.0f, "R_UA");  drawHudAxisWidget(x,  top - gap * 3.0f, rUAQ,  scale);
+    drawLabel(x2, top,              "L_TH");  drawHudAxisWidget(x2, top,              lTHQ,  scale);
+    drawLabel(x2, top - gap,        "R_TH");  drawHudAxisWidget(x2, top - gap,        rTHQ,  scale);
+    drawLabel(x2, top - gap * 2.0f, "L_SH");  drawHudAxisWidget(x2, top - gap * 2.0f, lSHQ,  scale);
+    drawLabel(x2, top - gap * 3.0f, "R_SH");  drawHudAxisWidget(x2, top - gap * 3.0f, rSHQ,  scale);
+    drawLabel(x3, top,              "HIPS");  drawHudAxisWidget(x3, top,              hipsQ, scale);
+    drawLabel(x3, top - gap,        "CHEST"); drawHudAxisWidget(x3, top - gap,        chestQ, scale);
 
     glEnable(GL_LIGHTING);
     glEnable(GL_DEPTH_TEST);

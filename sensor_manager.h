@@ -49,6 +49,18 @@ public:
     glm::quat getCorrectedRTHQuat() const;
     glm::quat getCorrectedRSHQuat() const;
 
+    void setHipsQuat(const glm::quat& q);
+    void setChestQuat(const glm::quat& q);
+
+    glm::quat getHipsQuat() const;
+    glm::quat getChestQuat() const;
+
+    void calibrateHips();
+    void calibrateChest();
+
+    glm::quat getCorrectedHipsQuat() const;
+    glm::quat getCorrectedChestQuat() const;
+
 private:
     static constexpr float kSmoothingAlpha = 0.35f;
     static constexpr float kFastSmoothingAlpha = 0.70f;
@@ -120,6 +132,22 @@ private:
     glm::quat calibrationReference8;
     mutable glm::quat smoothedCorrected8;
     mutable bool hasSmoothedCorrected8;
+
+    // HIPS (pelvis)
+    mutable std::mutex quatMutex9;
+    glm::quat sensorQuat9;
+    mutable std::mutex calibMutex9;
+    glm::quat calibrationReference9;
+    mutable glm::quat smoothedCorrected9;
+    mutable bool hasSmoothedCorrected9;
+
+    // CHEST (upper torso)
+    mutable std::mutex quatMutex10;
+    glm::quat sensorQuat10;
+    mutable std::mutex calibMutex10;
+    glm::quat calibrationReference10;
+    mutable glm::quat smoothedCorrected10;
+    mutable bool hasSmoothedCorrected10;
 
     void updateSensorQuat(glm::quat& current, const glm::quat& incoming) const;
     glm::quat neutralPose() const;

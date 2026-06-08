@@ -240,6 +240,8 @@ bool GltfModel::load(const std::string& path)
     prepareBoneTarget(leftShin,   "mixamorig:LeftLeg",     "mixamorig:LeftFoot");
     prepareBoneTarget(rightThigh, "mixamorig:RightUpLeg",  "mixamorig:RightLeg");
     prepareBoneTarget(rightShin,  "mixamorig:RightLeg",    "mixamorig:RightFoot");
+    prepareBoneTarget(hips,  "mixamorig:Hips",   "mixamorig:Spine");
+    prepareBoneTarget(chest, "mixamorig:Spine2",  "mixamorig:Neck");
 
     loaded = !meshes.empty();
     cgltf_free(data);
@@ -282,7 +284,9 @@ void GltfModel::draw(const glm::quat& leftForearmQ,
                      const glm::quat& leftThighQ,
                      const glm::quat& rightThighQ,
                      const glm::quat& leftShinQ,
-                     const glm::quat& rightShinQ)
+                     const glm::quat& rightShinQ,
+                     const glm::quat& hipsQ,
+                     const glm::quat& chestQ)
 {
     if (!loaded) {
         return;
@@ -290,6 +294,7 @@ void GltfModel::draw(const glm::quat& leftForearmQ,
 
     updateArmBones(leftForearmQ, rightForearmQ, leftUpperArmQ, rightUpperArmQ);
     updateLegBones(leftThighQ, rightThighQ, leftShinQ, rightShinQ);
+    updateTorsoBones(hipsQ, chestQ);
 
     glPushMatrix();
     glScalef(9.7f, 9.7f, 9.7f);
@@ -339,6 +344,14 @@ void GltfModel::updateLegBones(const glm::quat& leftThighQ,
     applyWorldDirection(rightThigh, rightThighQ * glm::vec3(0.0f, -1.0f, 0.0f));
     computeGlobals();
     applyWorldDirection(rightShin,  rightShinQ  * glm::vec3(0.0f, -1.0f, 0.0f));
+    computeGlobals();
+}
+
+void GltfModel::updateTorsoBones(const glm::quat& hipsQ, const glm::quat& chestQ)
+{
+    applyWorldDirection(hips,  hipsQ  * glm::vec3(0.0f, 1.0f, 0.0f));
+    computeGlobals();
+    applyWorldDirection(chest, chestQ * glm::vec3(0.0f, 1.0f, 0.0f));
     computeGlobals();
 }
 

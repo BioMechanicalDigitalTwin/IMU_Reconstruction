@@ -16,6 +16,8 @@ void InputHandler::handleKey(int key)
     else if (key == GLFW_KEY_X)     { sensorManager.calibrateLSH(); }
     else if (key == GLFW_KEY_G)     { sensorManager.calibrateRTH(); }
     else if (key == GLFW_KEY_H)     { sensorManager.calibrateRSH(); }
+    else if (key == GLFW_KEY_I)     { sensorManager.calibrateHips();  }
+    else if (key == GLFW_KEY_O)     { sensorManager.calibrateChest(); }
     else if (key == GLFW_KEY_SPACE) {
         sensorManager.calibrateLFA();
         sensorManager.calibrateRFA();
@@ -25,6 +27,8 @@ void InputHandler::handleKey(int key)
         sensorManager.calibrateLSH();
         sensorManager.calibrateRTH();
         sensorManager.calibrateRSH();
+        sensorManager.calibrateHips();
+        sensorManager.calibrateChest();
     }
 }
 

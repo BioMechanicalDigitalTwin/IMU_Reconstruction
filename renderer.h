@@ -13,7 +13,8 @@ public:
     void render(const glm::quat& leftForearmQ,  const glm::quat& rightForearmQ,
                 const glm::quat& leftUpperArmQ, const glm::quat& rightUpperArmQ,
                 const glm::quat& leftThighQ,    const glm::quat& rightThighQ,
-                const glm::quat& leftShinQ,     const glm::quat& rightShinQ);
+                const glm::quat& leftShinQ,     const glm::quat& rightShinQ,
+                const glm::quat& hipsQ,         const glm::quat& chestQ);
     void setCameraView(CameraView view) { cameraView = view; }
     void cycleCameraView();
 
@@ -29,7 +30,9 @@ private:
                              const glm::quat& lTHQ,
                              const glm::quat& rTHQ,
                              const glm::quat& lSHQ,
-                             const glm::quat& rSHQ);
+                             const glm::quat& rSHQ,
+                             const glm::quat& hipsQ,
+                             const glm::quat& chestQ);
     void drawHudAxisWidget(float cx, float cy,
                            const glm::quat& q,
                            float scale);

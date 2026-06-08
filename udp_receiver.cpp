@@ -50,9 +50,12 @@ void udpReceiver(SensorManager& sensorManager)
             bool isLSH   = (token == "L_SH");
             bool isRTH   = (token == "R_TH");
             bool isRSH   = (token == "R_SH");
+            bool isHips  = (token == "HIPS");
+            bool isChest = (token == "CHEST");
 
             if (!isLFA && !isRFA && !isLUA && !isRUA &&
-                !isLTH  && !isLSH   && !isRTH && !isRSH)
+                !isLTH  && !isLSH   && !isRTH && !isRSH
+                && !isHips && !isChest)
                 continue;
             
             float w, x, y, z;
@@ -72,6 +75,8 @@ void udpReceiver(SensorManager& sensorManager)
             else if (isLSH)   sensorManager.setLSHQuat(q);
             else if (isRTH)   sensorManager.setRTHQuat(q);
             else if (isRSH)   sensorManager.setRSHQuat(q);
+            else if (isHips)  sensorManager.setHipsQuat(q);
+            else if (isChest) sensorManager.setChestQuat(q);
         }
         catch(...) {}
     }

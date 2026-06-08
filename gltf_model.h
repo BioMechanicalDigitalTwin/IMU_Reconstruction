@@ -19,7 +19,9 @@ public:
               const glm::quat& leftThighQ,
               const glm::quat& rightThighQ,
               const glm::quat& leftShinQ,
-              const glm::quat& rightShinQ);
+              const glm::quat& rightShinQ,
+              const glm::quat& hipsQ,
+              const glm::quat& chestQ);
 
 private:
     struct Vertex {
@@ -81,6 +83,10 @@ private:
     BoneTarget leftShin;
     BoneTarget rightThigh;
     BoneTarget rightShin;
+    BoneTarget hips;
+    BoneTarget chest;
+    
+    void updateTorsoBones(const glm::quat& hipsQ, const glm::quat& chestQ);
 
     glm::mat4 composeLocal(const Node& node, const glm::quat& localRotation) const;
     void computeGlobals();

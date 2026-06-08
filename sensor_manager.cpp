@@ -38,6 +38,14 @@ SensorManager::SensorManager()
     , calibrationReference8(1.0f, 0.0f, 0.0f, 0.0f)
     , smoothedCorrected8(1.0f, 0.0f, 0.0f, 0.0f)
     , hasSmoothedCorrected8(false)
+    , sensorQuat9(1.0f, 0.0f, 0.0f, 0.0f)
+    , calibrationReference9(1.0f, 0.0f, 0.0f, 0.0f)
+    , smoothedCorrected9(1.0f, 0.0f, 0.0f, 0.0f)
+    , hasSmoothedCorrected9(false)
+    , sensorQuat10(1.0f, 0.0f, 0.0f, 0.0f)
+    , calibrationReference10(1.0f, 0.0f, 0.0f, 0.0f)
+    , smoothedCorrected10(1.0f, 0.0f, 0.0f, 0.0f)
+    , hasSmoothedCorrected10(false)
 {
     std::cout << "Quaternion mode 1/4. Press M to cycle modes, then recalibrate with C/V/B/N.\n";
 }
@@ -79,6 +87,43 @@ void SensorManager::setRUAQuat(const glm::quat& q)
     updateSensorQuat(sensorQuatRUA, q);
 }
 
+void SensorManager::setHipsQuat(const glm::quat& q)  { std::lock_guard<std::mutex> lock(quatMutex9);  updateSensorQuat(sensorQuat9,  q); }
+void SensorManager::setChestQuat(const glm::quat& q) { std::lock_guard<std::mutex> lock(quatMutex10); updateSensorQuat(sensorQuat10, q); }
+
+glm::quat SensorManager::getHipsQuat()  const { std::lock_guard<std::mutex> lock(quatMutex9);  return sensorQuat9;  }
+glm::quat SensorManager::getChestQuat() const { std::lock_guard<std::mutex> lock(quatMutex10); return sensorQuat10; }
+
+void SensorManager::calibrateHips()
+{
+    glm::quat q = getHipsQuat();
+    std::lock_guard<std::mutex> lock(calibMutex9);
+    calibrationReference9 = glm::normalize(q);
+    hasSmoothedCorrected9 = false;
+    std::cout << "Calibrated HIPS\n";
+}
+
+void SensorManager::calibrateChest()
+{
+    glm::quat q = getChestQuat();
+    std::lock_guard<std::mutex> lock(calibMutex10);
+    calibrationReference10 = glm::normalize(q);
+    hasSmoothedCorrected10 = false;
+    std::cout << "Calibrated CHEST\n";
+}
+
+glm::quat SensorManager::getCorrectedHipsQuat() const
+{
+    glm::quat q = getHipsQuat();
+    std::lock_guard<std::mutex> lock(calibMutex9);
+    return smoothCorrectedQuat(smoothedCorrected9, hasSmoothedCorrected9, computeCorrectedQuat(q, calibrationReference9));
+}
+
+glm::quat SensorManager::getCorrectedChestQuat() const
+{
+    glm::quat q = getChestQuat();
+    std::lock_guard<std::mutex> lock(calibMutex10);
+    return smoothCorrectedQuat(smoothedCorrected10, hasSmoothedCorrected10, computeCorrectedQuat(q, calibrationReference10));
+}
 // --- Getters ---
 
 glm::quat SensorManager::getLFAQuat() const
