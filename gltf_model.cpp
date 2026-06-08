@@ -293,8 +293,8 @@ void GltfModel::draw(const glm::quat& leftForearmQ,
     }
 
     updateArmBones(leftForearmQ, rightForearmQ, leftUpperArmQ, rightUpperArmQ);
-    updateLegBones(leftThighQ, rightThighQ, leftShinQ, rightShinQ);
     updateTorsoBones(hipsQ, chestQ);
+    updateLegBones(leftThighQ, rightThighQ, leftShinQ, rightShinQ);
 
     glPushMatrix();
     glScalef(9.7f, 9.7f, 9.7f);
