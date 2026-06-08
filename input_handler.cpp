@@ -12,11 +12,19 @@ void InputHandler::handleKey(int key)
     else if (key == GLFW_KEY_B)     { sensorManager.calibrateLUA();   }
     else if (key == GLFW_KEY_N)     { sensorManager.calibrateLFA();   }
     else if (key == GLFW_KEY_M)     { sensorManager.toggleQuaternionConvention(); }
+    else if (key == GLFW_KEY_Z)     { sensorManager.calibrateLTH(); }
+    else if (key == GLFW_KEY_X)     { sensorManager.calibrateLSH(); }
+    else if (key == GLFW_KEY_G)     { sensorManager.calibrateRTH(); }
+    else if (key == GLFW_KEY_H)     { sensorManager.calibrateRSH(); }
     else if (key == GLFW_KEY_SPACE) {
         sensorManager.calibrateHips();
         sensorManager.calibrateChest();
         sensorManager.calibrateLUA();
         sensorManager.calibrateLFA();
+        sensorManager.calibrateLTH();
+        sensorManager.calibrateLSH();
+        sensorManager.calibrateRTH();
+        sensorManager.calibrateRSH();
     }
 }
 

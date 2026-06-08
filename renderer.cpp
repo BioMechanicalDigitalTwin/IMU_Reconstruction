@@ -57,7 +57,9 @@ void Renderer::cycleCameraView()
 // ─────────────────────────────────────────────
 
 void Renderer::render(const glm::quat& leftForearmQ,  const glm::quat& rightForearmQ,
-                      const glm::quat& leftUpperArmQ, const glm::quat& rightUpperArmQ)
+                      const glm::quat& leftUpperArmQ, const glm::quat& rightUpperArmQ,
+                      const glm::quat& leftThighQ,    const glm::quat& rightThighQ,
+                      const glm::quat& leftShinQ,     const glm::quat& rightShinQ)
 {
     glClearColor(0.07f, 0.07f, 0.12f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -93,6 +95,8 @@ void Renderer::render(const glm::quat& leftForearmQ,  const glm::quat& rightFore
         drawBody();
         drawArm(leftShoulderPos,  leftUpperArmQ,  leftForearmQ,  false);
         drawArm(rightShoulderPos, rightUpperArmQ, rightForearmQ, true);
+        drawLegSensor(leftHipPos,  leftThighQ,  leftShinQ,  false);
+        drawLegSensor(rightHipPos, rightThighQ, rightShinQ, true);
     }
     drawWorldAxes();
     drawTrackingAxesHud(rightForearmQ, leftUpperArmQ, leftForearmQ, leftForearmQ);
@@ -336,6 +340,36 @@ void Renderer::drawHand(glm::vec3 wrist,
                                        + handUp    * 0.18f);
     drawFinger(thumbBase, thumbDir, 0.48f, 0.060f,
                r, g*0.83f, b*0.68f);
+}
+
+void Renderer::drawLegSensor(glm::vec3 hipPos,
+                              const glm::quat& thighQ,
+                              const glm::quat& shinQ,
+                              bool isRight)
+{
+    const glm::vec3 down(0.0f, -1.0f, 0.0f);
+    const float thighLen = 4.20f;
+    const float shinLen  = 3.80f;
+
+    glm::vec3 thighDir = glm::normalize(thighQ * down);
+    glm::vec3 knee     = hipPos + thighDir * thighLen;
+
+    glm::vec3 shinDir  = glm::normalize(shinQ * down);
+    glm::vec3 ankle    = knee + shinDir * shinLen;
+
+    drawSphere  (hipPos, 0.54f, 18, kPantsR*1.3f, kPantsG*1.3f, kPantsB*1.4f);
+    drawCylinder(hipPos, knee,  0.46f, 18, kPantsR, kPantsG, kPantsB);
+    drawSphere  (knee,   0.40f, 16, kPantsR*1.2f, kPantsG*1.2f, kPantsB*1.3f);
+    drawCylinder(knee,   ankle, 0.36f, 16, kPantsR*1.05f, kPantsG*1.05f, kPantsB*1.05f);
+    drawSphere  (ankle,  0.34f, 14, kShoeR*1.4f,  kShoeG*1.3f,  kShoeB*1.3f);
+
+    // Foot
+    glm::vec3 footFwd = glm::normalize(shinQ * glm::vec3(0,0,1));
+    glm::vec3 footRight = glm::normalize(shinQ * glm::vec3(isRight ? 1.0f : -1.0f, 0,0));
+    drawBox(ankle + shinDir*0.20f + footFwd*0.32f,
+            footRight, glm::vec3(0,1,0), footFwd,
+            0.30f, 0.14f, 0.58f,
+            kShoeR, kShoeG, kShoeB);
 }
 
 // ─────────────────────────────────────────────

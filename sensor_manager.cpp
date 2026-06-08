@@ -22,6 +22,22 @@ SensorManager::SensorManager()
     , calibrationReference4(1.0f, 0.0f, 0.0f, 0.0f)
     , smoothedCorrected4(1.0f, 0.0f, 0.0f, 0.0f)
     , hasSmoothedCorrected4(false)
+    , sensorQuat5(1.0f, 0.0f, 0.0f, 0.0f)
+    , sensorQuat6(1.0f, 0.0f, 0.0f, 0.0f)
+    , sensorQuat7(1.0f, 0.0f, 0.0f, 0.0f)
+    , sensorQuat8(1.0f, 0.0f, 0.0f, 0.0f)
+    , calibrationReference5(1.0f, 0.0f, 0.0f, 0.0f)
+    , smoothedCorrected5(1.0f, 0.0f, 0.0f, 0.0f)
+    , hasSmoothedCorrected5(false)
+    , calibrationReference6(1.0f, 0.0f, 0.0f, 0.0f)
+    , smoothedCorrected6(1.0f, 0.0f, 0.0f, 0.0f)
+    , hasSmoothedCorrected6(false)
+    , calibrationReference7(1.0f, 0.0f, 0.0f, 0.0f)
+    , smoothedCorrected7(1.0f, 0.0f, 0.0f, 0.0f)
+    , hasSmoothedCorrected7(false)
+    , calibrationReference8(1.0f, 0.0f, 0.0f, 0.0f)
+    , smoothedCorrected8(1.0f, 0.0f, 0.0f, 0.0f)
+    , hasSmoothedCorrected8(false)
 {
     std::cout << "Quaternion mode 1/4. Press M to cycle modes, then recalibrate with C/V/B/N.\n";
 }
@@ -138,6 +154,26 @@ void SensorManager::toggleQuaternionConvention()
     hasSmoothedCorrected4 = false;
     std::cout << "Quaternion mode " << (mode + 1) << "/4. Recalibrate with C/V/B/N.\n";
 }
+
+void SensorManager::setLTHQuat(const glm::quat& q) { std::lock_guard<std::mutex> lock(quatMutex5); updateSensorQuat(sensorQuat5, q); }
+void SensorManager::setLSHQuat(const glm::quat& q) { std::lock_guard<std::mutex> lock(quatMutex6); updateSensorQuat(sensorQuat6, q); }
+void SensorManager::setRTHQuat(const glm::quat& q) { std::lock_guard<std::mutex> lock(quatMutex7); updateSensorQuat(sensorQuat7, q); }
+void SensorManager::setRSHQuat(const glm::quat& q) { std::lock_guard<std::mutex> lock(quatMutex8); updateSensorQuat(sensorQuat8, q); }
+
+glm::quat SensorManager::getLTHQuat() const { std::lock_guard<std::mutex> lock(quatMutex5); return sensorQuat5; }
+glm::quat SensorManager::getLSHQuat() const { std::lock_guard<std::mutex> lock(quatMutex6); return sensorQuat6; }
+glm::quat SensorManager::getRTHQuat() const { std::lock_guard<std::mutex> lock(quatMutex7); return sensorQuat7; }
+glm::quat SensorManager::getRSHQuat() const { std::lock_guard<std::mutex> lock(quatMutex8); return sensorQuat8; }
+
+void SensorManager::calibrateLTH() { glm::quat q = getLTHQuat(); std::lock_guard<std::mutex> lock(calibMutex5); calibrationReference5 = glm::normalize(q); hasSmoothedCorrected5 = false; std::cout << "Calibrated L_TH\n"; }
+void SensorManager::calibrateLSH() { glm::quat q = getLSHQuat(); std::lock_guard<std::mutex> lock(calibMutex6); calibrationReference6 = glm::normalize(q); hasSmoothedCorrected6 = false; std::cout << "Calibrated L_SH\n"; }
+void SensorManager::calibrateRTH() { glm::quat q = getRTHQuat(); std::lock_guard<std::mutex> lock(calibMutex7); calibrationReference7 = glm::normalize(q); hasSmoothedCorrected7 = false; std::cout << "Calibrated R_TH\n"; }
+void SensorManager::calibrateRSH() { glm::quat q = getRSHQuat(); std::lock_guard<std::mutex> lock(calibMutex8); calibrationReference8 = glm::normalize(q); hasSmoothedCorrected8 = false; std::cout << "Calibrated R_SH\n"; }
+
+glm::quat SensorManager::getCorrectedLTHQuat() const { glm::quat q = getLTHQuat(); std::lock_guard<std::mutex> lock(calibMutex5); return smoothCorrectedQuat(smoothedCorrected5, hasSmoothedCorrected5, computeCorrectedQuat(q, calibrationReference5)); }
+glm::quat SensorManager::getCorrectedLSHQuat() const { glm::quat q = getLSHQuat(); std::lock_guard<std::mutex> lock(calibMutex6); return smoothCorrectedQuat(smoothedCorrected6, hasSmoothedCorrected6, computeCorrectedQuat(q, calibrationReference6)); }
+glm::quat SensorManager::getCorrectedRTHQuat() const { glm::quat q = getRTHQuat(); std::lock_guard<std::mutex> lock(calibMutex7); return smoothCorrectedQuat(smoothedCorrected7, hasSmoothedCorrected7, computeCorrectedQuat(q, calibrationReference7)); }
+glm::quat SensorManager::getCorrectedRSHQuat() const { glm::quat q = getRSHQuat(); std::lock_guard<std::mutex> lock(calibMutex8); return smoothCorrectedQuat(smoothedCorrected8, hasSmoothedCorrected8, computeCorrectedQuat(q, calibrationReference8)); }
 
 // --- Corrected getters ---
 

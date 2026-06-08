@@ -50,8 +50,13 @@ int main()
         glm::quat correctedLUA = sensorManager.getCorrectedLUAQuat();
         glm::quat correctedLFA = sensorManager.getCorrectedLFAQuat();
 
-        renderer.render(correctedQ1, correctedQ2, correctedLUA, correctedLFA);
-        glfwSwapBuffers(window);
+        glm::quat correctedLTH = sensorManager.getCorrectedLTHQuat();
+        glm::quat correctedLSH = sensorManager.getCorrectedLSHQuat();
+        glm::quat correctedRTH = sensorManager.getCorrectedRTHQuat();
+        glm::quat correctedRSH = sensorManager.getCorrectedRSHQuat();
+
+        renderer.render(correctedQ1, correctedQ2, correctedLUA, correctedLFA,
+                        correctedLTH, correctedRTH, correctedLSH, correctedRSH);        glfwSwapBuffers(window);
         glfwPollEvents();
     }
 

@@ -11,7 +11,9 @@ class Renderer {
 public:
     void initialize();
     void render(const glm::quat& leftForearmQ,  const glm::quat& rightForearmQ,
-                const glm::quat& leftUpperArmQ, const glm::quat& rightUpperArmQ);
+                const glm::quat& leftUpperArmQ, const glm::quat& rightUpperArmQ,
+                const glm::quat& leftThighQ,    const glm::quat& rightThighQ,
+                const glm::quat& leftShinQ,     const glm::quat& rightShinQ);
     void setCameraView(CameraView view) { cameraView = view; }
     void cycleCameraView();
 
@@ -42,6 +44,14 @@ private:
                  const glm::quat& forearmQ,
                  bool isRight);
 
+    void drawLegSensor(glm::vec3 hipPos,
+                       const glm::quat& thighQ,
+                       const glm::quat& shinQ,
+                       bool isRight);
+
+    glm::vec3 leftHipPos  = glm::vec3(-1.10f, 10.0f, 0.0f);
+    glm::vec3 rightHipPos = glm::vec3( 1.10f, 10.0f, 0.0f);
+    
     // Primitives
     void drawCylinder(glm::vec3 start, glm::vec3 end,
                       float radius, int segments,
