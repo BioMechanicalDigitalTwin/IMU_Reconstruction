@@ -22,10 +22,14 @@ private:
 
     void setupLighting();
     void drawWorldAxes();
-    void drawTrackingAxesHud(const glm::quat& chestQ,
-                             const glm::quat& upperArmQ,
-                             const glm::quat& forearmQ,
-                             const glm::quat& handQ);
+    void drawTrackingAxesHud(const glm::quat& lFAQ,
+                             const glm::quat& rFAQ,
+                             const glm::quat& lUAQ,
+                             const glm::quat& rUAQ,
+                             const glm::quat& lTHQ,
+                             const glm::quat& rTHQ,
+                             const glm::quat& lSHQ,
+                             const glm::quat& rSHQ);
     void drawHudAxisWidget(float cx, float cy,
                            const glm::quat& q,
                            float scale);

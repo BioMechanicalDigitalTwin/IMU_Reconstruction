@@ -15,7 +15,11 @@ public:
     void draw(const glm::quat& leftForearmQ,
               const glm::quat& rightForearmQ,
               const glm::quat& leftUpperArmQ,
-              const glm::quat& rightUpperArmQ);
+              const glm::quat& rightUpperArmQ,
+              const glm::quat& leftThighQ,
+              const glm::quat& rightThighQ,
+              const glm::quat& leftShinQ,
+              const glm::quat& rightShinQ);
 
 private:
     struct Vertex {
@@ -73,6 +77,10 @@ private:
     BoneTarget leftForeArm;
     BoneTarget rightArm;
     BoneTarget rightForeArm;
+    BoneTarget leftThigh;
+    BoneTarget leftShin;
+    BoneTarget rightThigh;
+    BoneTarget rightShin;
 
     glm::mat4 composeLocal(const Node& node, const glm::quat& localRotation) const;
     void computeGlobals();
@@ -81,6 +89,10 @@ private:
                         const glm::quat& rightForearmQ,
                         const glm::quat& leftUpperArmQ,
                         const glm::quat& rightUpperArmQ);
+    void updateLegBones(const glm::quat& leftThighQ,
+                        const glm::quat& rightThighQ,
+                        const glm::quat& leftShinQ,
+                        const glm::quat& rightShinQ);
     void applyWorldRotation(const BoneTarget& target, const glm::quat& worldRotation);
     void applyWorldDirection(const BoneTarget& target, const glm::vec3& worldDirection);
     void prepareBoneTarget(BoneTarget& target, const char* nodeName, const char* childName);

@@ -2,15 +2,10 @@
 
 ```bash
 g++ -std=c++17 -o imu_visualizer \
-    main.cpp \
-    sensor_manager.cpp \
-    udp_receiver.cpp \
-    input_handler.cpp \
-    renderer.cpp \
-    gltf_model.cpp \
-    -lglfw -lGL -lGLU -lpthread \
-    -I/usr/include/glm \
-    -Ithird_party
+    main.cpp sensor_manager.cpp udp_receiver.cpp \
+    input_handler.cpp renderer.cpp gltf_model.cpp \
+    -lglfw -lGL -lGLU -lglut -lpthread \
+    -I/usr/include/glm -Ithird_party
 ```
 
 ## To run the executable

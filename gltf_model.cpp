@@ -236,6 +236,10 @@ bool GltfModel::load(const std::string& path)
     prepareBoneTarget(leftForeArm, "mixamorig:LeftForeArm", "mixamorig:LeftHand");
     prepareBoneTarget(rightArm, "mixamorig:RightArm", "mixamorig:RightForeArm");
     prepareBoneTarget(rightForeArm, "mixamorig:RightForeArm", "mixamorig:RightHand");
+    prepareBoneTarget(leftThigh,  "mixamorig:LeftUpLeg",   "mixamorig:LeftLeg");
+    prepareBoneTarget(leftShin,   "mixamorig:LeftLeg",     "mixamorig:LeftFoot");
+    prepareBoneTarget(rightThigh, "mixamorig:RightUpLeg",  "mixamorig:RightLeg");
+    prepareBoneTarget(rightShin,  "mixamorig:RightLeg",    "mixamorig:RightFoot");
 
     loaded = !meshes.empty();
     cgltf_free(data);
@@ -274,13 +278,18 @@ void GltfModel::computeGlobalsRecursive(int nodeIndex, const glm::mat4& parentMa
 void GltfModel::draw(const glm::quat& leftForearmQ,
                      const glm::quat& rightForearmQ,
                      const glm::quat& leftUpperArmQ,
-                     const glm::quat& rightUpperArmQ)
+                     const glm::quat& rightUpperArmQ,
+                     const glm::quat& leftThighQ,
+                     const glm::quat& rightThighQ,
+                     const glm::quat& leftShinQ,
+                     const glm::quat& rightShinQ)
 {
     if (!loaded) {
         return;
     }
 
     updateArmBones(leftForearmQ, rightForearmQ, leftUpperArmQ, rightUpperArmQ);
+    updateLegBones(leftThighQ, rightThighQ, leftShinQ, rightShinQ);
 
     glPushMatrix();
     glScalef(9.7f, 9.7f, 9.7f);
@@ -315,6 +324,21 @@ void GltfModel::updateArmBones(const glm::quat& leftForearmQ,
     applyWorldDirection(rightArm, rightUpperArmQ * glm::vec3(0.0f, -1.0f, 0.0f));
     computeGlobals();
     applyWorldDirection(rightForeArm, rightForearmQ * glm::vec3(0.0f, -1.0f, 0.0f));
+    computeGlobals();
+}
+
+void GltfModel::updateLegBones(const glm::quat& leftThighQ,
+                                const glm::quat& rightThighQ,
+                                const glm::quat& leftShinQ,
+                                const glm::quat& rightShinQ)
+{
+    applyWorldDirection(leftThigh,  leftThighQ  * glm::vec3(0.0f, -1.0f, 0.0f));
+    computeGlobals();
+    applyWorldDirection(leftShin,   leftShinQ   * glm::vec3(0.0f, -1.0f, 0.0f));
+    computeGlobals();
+    applyWorldDirection(rightThigh, rightThighQ * glm::vec3(0.0f, -1.0f, 0.0f));
+    computeGlobals();
+    applyWorldDirection(rightShin,  rightShinQ  * glm::vec3(0.0f, -1.0f, 0.0f));
     computeGlobals();
 }
 

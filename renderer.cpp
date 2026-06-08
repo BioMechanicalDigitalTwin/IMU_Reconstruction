@@ -3,6 +3,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include <cmath>
+#include <GL/glut.h>
 
 // ─────────────────────────────────────────────
 //  INIT / LIGHTING
@@ -10,6 +11,8 @@
 
 void Renderer::initialize()
 {
+    int argc = 0;
+    glutInit(&argc, nullptr);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
@@ -90,7 +93,8 @@ void Renderer::render(const glm::quat& leftForearmQ,  const glm::quat& rightFore
 
     setupLighting();
     if (humanModel.isLoaded()) {
-        humanModel.draw(leftForearmQ, rightForearmQ, leftUpperArmQ, rightUpperArmQ);
+        humanModel.draw(leftForearmQ, rightForearmQ, leftUpperArmQ, rightUpperArmQ,
+                        leftThighQ, rightThighQ, leftShinQ, rightShinQ);
     } else {
         drawBody();
         drawArm(leftShoulderPos,  leftUpperArmQ,  leftForearmQ,  false);
@@ -99,8 +103,8 @@ void Renderer::render(const glm::quat& leftForearmQ,  const glm::quat& rightFore
         drawLegSensor(rightHipPos, rightThighQ, rightShinQ, true);
     }
     drawWorldAxes();
-    drawTrackingAxesHud(rightForearmQ, leftUpperArmQ, leftForearmQ, leftForearmQ);
-}
+    drawTrackingAxesHud(leftForearmQ, rightForearmQ, leftUpperArmQ, rightUpperArmQ,
+                        leftThighQ, rightThighQ, leftShinQ, rightShinQ);}
 
 // ─────────────────────────────────────────────
 //  BODY  (real human proportions, ~7.5 heads tall)
@@ -389,10 +393,14 @@ void Renderer::drawWorldAxes()
     glEnable(GL_LIGHTING);
 }
 
-void Renderer::drawTrackingAxesHud(const glm::quat& chestQ,
-                                   const glm::quat& upperArmQ,
-                                   const glm::quat& forearmQ,
-                                   const glm::quat& handQ)
+void Renderer::drawTrackingAxesHud(const glm::quat& lFAQ,
+                                   const glm::quat& rFAQ,
+                                   const glm::quat& lUAQ,
+                                   const glm::quat& rUAQ,
+                                   const glm::quat& lTHQ,
+                                   const glm::quat& rTHQ,
+                                   const glm::quat& lSHQ,
+                                   const glm::quat& rSHQ)
 {
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -406,15 +414,28 @@ void Renderer::drawTrackingAxesHud(const glm::quat& chestQ,
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_LIGHTING);
 
-    const float x = (float)WINDOW_WIDTH - 58.0f;
-    const float top = (float)WINDOW_HEIGHT - 42.0f;
-    const float gap = 44.0f;
     const float scale = 18.0f;
+    const float gap   = 60.0f;
+    const float x     = (float)WINDOW_WIDTH - 70.0f;
+    const float x2    = x - 80.0f;
+    const float top   = (float)WINDOW_HEIGHT - 50.0f;
 
-    drawHudAxisWidget(x, top,             chestQ,    scale);
-    drawHudAxisWidget(x, top - gap,       upperArmQ, scale);
-    drawHudAxisWidget(x, top - gap * 2.0f, forearmQ, scale);
-    drawHudAxisWidget(x, top - gap * 3.0f, handQ,    scale);
+    // Labels and widgets — arms on right column, legs on second column
+    auto drawLabel = [&](float px, float py, const char* text) {
+        glColor3f(0.90f, 0.90f, 0.92f);
+        glRasterPos2f(px - 14.0f, py + 24.0f);
+        for (const char* c = text; *c; ++c)
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
+    };
+
+    drawLabel(x,  top,              "L_FA"); drawHudAxisWidget(x,  top,              lFAQ, scale);
+    drawLabel(x,  top - gap,        "R_FA"); drawHudAxisWidget(x,  top - gap,        rFAQ, scale);
+    drawLabel(x,  top - gap * 2.0f, "L_UA"); drawHudAxisWidget(x,  top - gap * 2.0f, lUAQ, scale);
+    drawLabel(x,  top - gap * 3.0f, "R_UA"); drawHudAxisWidget(x,  top - gap * 3.0f, rUAQ, scale);
+    drawLabel(x2, top,              "L_TH"); drawHudAxisWidget(x2, top,              lTHQ, scale);
+    drawLabel(x2, top - gap,        "R_TH"); drawHudAxisWidget(x2, top - gap,        rTHQ, scale);
+    drawLabel(x2, top - gap * 2.0f, "L_SH"); drawHudAxisWidget(x2, top - gap * 2.0f, lSHQ, scale);
+    drawLabel(x2, top - gap * 3.0f, "R_SH"); drawHudAxisWidget(x2, top - gap * 3.0f, rSHQ, scale);
 
     glEnable(GL_LIGHTING);
     glEnable(GL_DEPTH_TEST);
@@ -424,7 +445,7 @@ void Renderer::drawTrackingAxesHud(const glm::quat& chestQ,
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
 }
-
+ 
 void Renderer::drawHudAxisWidget(float cx, float cy,
                                  const glm::quat& q,
                                  float scale)
