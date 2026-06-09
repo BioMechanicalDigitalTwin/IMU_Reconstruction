@@ -78,7 +78,7 @@ private:
     mutable std::mutex quatMutex1;
     glm::quat sensorQuatLFA;
     mutable std::mutex calibMutex1;
-    glm::quat calibrationReferenceLFA;
+    mutable glm::quat calibrationReferenceLFA;
     mutable glm::quat smoothedCorrectedLFA;
     mutable bool hasSmoothedCorrectedLFA;
     mutable glm::quat lastQLFA;
@@ -87,7 +87,7 @@ private:
     mutable std::mutex quatMutex2;
     glm::quat sensorQuatRFA;
     mutable std::mutex calibMutex2;
-    glm::quat calibrationReferenceRFA;
+    mutable glm::quat calibrationReferenceRFA;
     mutable glm::quat smoothedCorrectedRFA;
     mutable bool hasSmoothedCorrectedRFA;
     mutable glm::quat lastQRFA;
@@ -96,7 +96,7 @@ private:
     mutable std::mutex quatMutex3;
     glm::quat sensorQuat3;
     mutable std::mutex calibMutex3;
-    glm::quat calibrationReference3;
+    mutable glm::quat calibrationReference3;
     mutable glm::quat smoothedCorrected3;
     mutable bool hasSmoothedCorrected3;
     mutable glm::quat lastQ3;
@@ -105,7 +105,7 @@ private:
     mutable std::mutex quatMutex4;
     glm::quat sensorQuatRUA;
     mutable std::mutex calibMutex4;
-    glm::quat calibrationReferenceRUA;
+    mutable glm::quat calibrationReferenceRUA;
     mutable glm::quat smoothedCorrectedRUA;
     mutable bool hasSmoothedCorrectedRUA;
     mutable glm::quat lastQRUA;
@@ -114,7 +114,7 @@ private:
     mutable std::mutex quatMutex5;
     glm::quat sensorQuat5;
     mutable std::mutex calibMutex5;
-    glm::quat calibrationReference5;
+    mutable glm::quat calibrationReference5;
     mutable glm::quat smoothedCorrected5;
     mutable bool hasSmoothedCorrected5;
     mutable glm::quat lastQ5;
@@ -123,7 +123,7 @@ private:
     mutable std::mutex quatMutex6;
     glm::quat sensorQuat6;
     mutable std::mutex calibMutex6;
-    glm::quat calibrationReference6;
+    mutable glm::quat calibrationReference6;
     mutable glm::quat smoothedCorrected6;
     mutable bool hasSmoothedCorrected6;
     mutable glm::quat lastQ6;
@@ -132,7 +132,7 @@ private:
     mutable std::mutex quatMutex7;
     glm::quat sensorQuat7;
     mutable std::mutex calibMutex7;
-    glm::quat calibrationReference7;
+    mutable glm::quat calibrationReference7;
     mutable glm::quat smoothedCorrected7;
     mutable bool hasSmoothedCorrected7;
     mutable glm::quat lastQ7;
@@ -141,7 +141,7 @@ private:
     mutable std::mutex quatMutex8;
     glm::quat sensorQuat8;
     mutable std::mutex calibMutex8;
-    glm::quat calibrationReference8;
+    mutable glm::quat calibrationReference8;
     mutable glm::quat smoothedCorrected8;
     mutable bool hasSmoothedCorrected8;
     mutable glm::quat lastQ8;
@@ -150,7 +150,7 @@ private:
     mutable std::mutex quatMutex9;
     glm::quat sensorQuat9;
     mutable std::mutex calibMutex9;
-    glm::quat calibrationReference9;
+    mutable glm::quat calibrationReference9;
     mutable glm::quat smoothedCorrected9;
     mutable bool hasSmoothedCorrected9;
     mutable glm::quat lastQ9;
@@ -159,7 +159,7 @@ private:
     mutable std::mutex quatMutex10;
     glm::quat sensorQuat10;
     mutable std::mutex calibMutex10;
-    glm::quat calibrationReference10;
+    mutable glm::quat calibrationReference10;
     mutable glm::quat smoothedCorrected10;
     mutable bool hasSmoothedCorrected10;
     mutable glm::quat lastQ10;
