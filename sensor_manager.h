@@ -62,18 +62,15 @@ public:
     glm::quat getCorrectedChestQuat() const;
 
 private:
-    static constexpr float kSmoothingAlpha       = 0.35f;
-    static constexpr float kFastSmoothingAlpha   = 0.70f;
-    static constexpr float kDeadbandRadians      = 0.003f;  // widened from 0.0009
-    static constexpr float kFastMotionRadians    = 0.20f;
-    static constexpr float kStationaryThreshold  = 0.002f;
-    static constexpr float kStationaryTimeMs     = 1500.0f;
-    static constexpr float kDriftCorrAlpha       = 0.002f;
-
+    static constexpr float kSmoothingAlpha       = 0.55f;   
+    static constexpr float kFastSmoothingAlpha   = 0.80f;  
+    static constexpr float kDeadbandRadians      = 0.008f;  
+    static constexpr float kFastMotionRadians    = 0.20f;   
+    static constexpr float kStationaryThreshold  = 0.015f;  
+    static constexpr float kStationaryTimeMs     = 5000.0f; 
+    static constexpr float kDriftCorrAlpha       = 0.0003f; 
+    
     std::atomic<int> quaternionMode;
-
-    // Per-sensor state block — repeated 10 times
-    // Each block: quatMutex, sensorQuat, calibMutex, calibRef, smoothed, hasSmoothed, lastQ, stationaryTimer
 
     mutable std::mutex quatMutex1;
     glm::quat sensorQuatLFA;

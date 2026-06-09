@@ -35,8 +35,6 @@ SensorManager::SensorManager()
     std::cout << "Quaternion mode 1/4. Press M to cycle, then recalibrate.\n";
 }
 
-// ── core helpers ──────────────────────────────────────────────────────────────
-
 void SensorManager::updateSensorQuat(glm::quat& current, const glm::quat& incoming) const
 {
     glm::quat t = glm::normalize(incoming);
@@ -83,10 +81,11 @@ glm::quat SensorManager::smoothCorrectedQuat(glm::quat& current,
 
     const float dot   = std::clamp(glm::dot(current, nt), -1.0f, 1.0f);
     const float angle = 2.0f * std::acos(std::abs(dot));
+
+    // Deadband: ignore sub-threshold jitter
     if (angle < kDeadbandRadians) return current;
 
-    // Continuous alpha — smooth curve instead of hard jump
-    const float t     = glm::smoothstep(0.05f, 0.35f, angle);
+    const float t     = glm::smoothstep(0.02f, 0.25f, angle);  // was (0.05, 0.35)
     const float alpha = glm::mix(kSmoothingAlpha, kFastSmoothingAlpha, t);
     current = glm::normalize(glm::slerp(current, nt, alpha));
     return current;
@@ -102,15 +101,21 @@ void SensorManager::autoRecalibrate(glm::quat& calibRef,
 
     if (angle < kStationaryThreshold) {
         stationaryTimer += 16.0f;
-        if (stationaryTimer > kStationaryTimeMs)
-            calibRef = glm::normalize(glm::slerp(calibRef, current, kDriftCorrAlpha));
+        if (stationaryTimer > kStationaryTimeMs) {
+            const float refDrift = 2.0f * std::acos(
+                std::clamp(std::abs(glm::dot(calibRef, current)), 0.0f, 1.0f));
+            // Only nudge if drift is small — don't chase a raised arm
+            if (refDrift < glm::radians(15.0f)) {
+                calibRef = glm::normalize(glm::slerp(calibRef, current, kDriftCorrAlpha));
+            }
+            // Don't reset timer — keep checking but at reduced rate
+            stationaryTimer = kStationaryTimeMs - 500.0f;
+        }
     } else {
         stationaryTimer = 0.0f;
     }
     lastQ = current;
 }
-
-// ── setters ───────────────────────────────────────────────────────────────────
 
 void SensorManager::setLFAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex1);  updateSensorQuat(sensorQuatLFA, q); }
 void SensorManager::setRFAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex2);  updateSensorQuat(sensorQuatRFA, q); }
@@ -123,8 +128,6 @@ void SensorManager::setRSHQuat(const glm::quat& q)  { std::lock_guard<std::mutex
 void SensorManager::setHipsQuat(const glm::quat& q) { std::lock_guard<std::mutex> l(quatMutex9);  updateSensorQuat(sensorQuat9,   q); }
 void SensorManager::setChestQuat(const glm::quat& q){ std::lock_guard<std::mutex> l(quatMutex10); updateSensorQuat(sensorQuat10,  q); }
 
-// ── getters ───────────────────────────────────────────────────────────────────
-
 glm::quat SensorManager::getLFAQuat()  const { std::lock_guard<std::mutex> l(quatMutex1);  return sensorQuatLFA; }
 glm::quat SensorManager::getRFAQuat()  const { std::lock_guard<std::mutex> l(quatMutex2);  return sensorQuatRFA; }
 glm::quat SensorManager::getLUAQuat()  const { std::lock_guard<std::mutex> l(quatMutex3);  return sensorQuat3;   }
@@ -135,8 +138,6 @@ glm::quat SensorManager::getRTHQuat()  const { std::lock_guard<std::mutex> l(qua
 glm::quat SensorManager::getRSHQuat()  const { std::lock_guard<std::mutex> l(quatMutex8);  return sensorQuat8;   }
 glm::quat SensorManager::getHipsQuat() const { std::lock_guard<std::mutex> l(quatMutex9);  return sensorQuat9;   }
 glm::quat SensorManager::getChestQuat()const { std::lock_guard<std::mutex> l(quatMutex10); return sensorQuat10;  }
-
-// ── calibration ───────────────────────────────────────────────────────────────
 
 void SensorManager::calibrateLFA()  { auto q = getLFAQuat();  std::lock_guard<std::mutex> l(calibMutex1);  calibrationReferenceLFA = glm::normalize(q); hasSmoothedCorrectedLFA = false; stationaryTimerLFA = 0; std::cout << "Calibrated L_FA\n"; }
 void SensorManager::calibrateRFA()  { auto q = getRFAQuat();  std::lock_guard<std::mutex> l(calibMutex2);  calibrationReferenceRFA = glm::normalize(q); hasSmoothedCorrectedRFA = false; stationaryTimerRFA = 0; std::cout << "Calibrated R_FA\n"; }
@@ -158,8 +159,6 @@ void SensorManager::toggleQuaternionConvention()
     hasSmoothedCorrected3   = hasSmoothedCorrectedRUA = false;
     std::cout << "Quaternion mode " << (mode + 1) << "/4. Recalibrate.\n";
 }
-
-// ── corrected getters (autoRecalibrate wired in) ──────────────────────────────
 
 glm::quat SensorManager::getCorrectedLFAQuat() const {
     auto q = getLFAQuat();

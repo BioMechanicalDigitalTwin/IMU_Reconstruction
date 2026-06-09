@@ -387,7 +387,7 @@ void GltfModel::applyWorldDirection(const BoneTarget& target, const glm::vec3& w
         return;
     }
 
-    glm::vec3 currentDirection = glm::normalize(nodes[target.node].rotation * glm::normalize(childLocal));
+    glm::vec3 currentDirection = glm::normalize(animatedLocalRotations[target.node] * glm::normalize(childLocal));
     glm::vec3 targetDirection = glm::normalize(glm::inverse(parentWorld) * glm::normalize(worldDirection));
     glm::quat delta = rotationBetween(currentDirection, targetDirection);
     animatedLocalRotations[target.node] = glm::normalize(delta * nodes[target.node].rotation);
