@@ -62,8 +62,8 @@ public:
     glm::quat getCorrectedChestQuat() const;
 
 private:
-    static constexpr float kSmoothingAlpha       = 0.55f;   
-    static constexpr float kFastSmoothingAlpha   = 0.80f;  
+    static constexpr float kSmoothingAlpha       = 1.0f;   
+    static constexpr float kFastSmoothingAlpha   = 1.0f;  
     static constexpr float kDeadbandRadians      = 0.008f;  
     static constexpr float kFastMotionRadians    = 0.20f;   
     static constexpr float kStationaryThreshold  = 0.015f;  
