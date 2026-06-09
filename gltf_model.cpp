@@ -321,14 +321,19 @@ void GltfModel::updateArmBones(const glm::quat& leftForearmQ,
         animatedLocalRotations[i] = nodes[i].rotation;
     }
 
+    const glm::vec3 armDir = glm::normalize(glm::vec3(-0.3f, -1.0f, 0.0f));
+
     computeGlobals();
-    applyWorldDirection(leftArm, leftUpperArmQ * glm::vec3(0.0f, -1.0f, 0.0f));
+    applyWorldDirection(leftArm, leftUpperArmQ * armDir);
     computeGlobals();
-    applyWorldDirection(leftForeArm, leftForearmQ * glm::vec3(0.0f, -1.0f, 0.0f));
+
+    applyWorldDirection(leftForeArm, leftForearmQ * glm::vec3(-0.3f, -1.0f, 0.0f));
     computeGlobals();
-    applyWorldDirection(rightArm, rightUpperArmQ * glm::vec3(0.0f, -1.0f, 0.0f));
+
+    applyWorldDirection(rightArm, rightUpperArmQ * armDir);
     computeGlobals();
-    applyWorldDirection(rightForeArm, rightForearmQ * glm::vec3(0.0f, -1.0f, 0.0f));
+
+    applyWorldDirection(rightForeArm, rightForearmQ * glm::vec3(-0.3f, -1.0f, 0.0f));
     computeGlobals();
 }
 
@@ -387,10 +392,15 @@ void GltfModel::applyWorldDirection(const BoneTarget& target, const glm::vec3& w
         return;
     }
 
-    glm::vec3 currentDirection = glm::normalize(nodes[target.node].rotation * glm::normalize(childLocal));
+    // Use current animated world rotation to get actual current bone direction
+    // instead of bind-pose rotation which points arms backward in Mixamo rigs
+    glm::quat currentBoneWorld = nodeWorldRotation(target.node);
+    glm::vec3 currentDirection = glm::normalize(currentBoneWorld * glm::normalize(childLocal));
     glm::vec3 targetDirection = glm::normalize(glm::inverse(parentWorld) * glm::normalize(worldDirection));
-    glm::quat delta = rotationBetween(currentDirection, targetDirection);
-    animatedLocalRotations[target.node] = glm::normalize(delta * nodes[target.node].rotation);
+    glm::vec3 currentLocal = glm::normalize(glm::inverse(parentWorld) * currentDirection);
+
+    glm::quat delta = rotationBetween(currentLocal, targetDirection);
+    animatedLocalRotations[target.node] = glm::normalize(delta * animatedLocalRotations[target.node]);
 }
 
 void GltfModel::prepareBoneTarget(BoneTarget& target, const char* nodeName, const char* childName)
