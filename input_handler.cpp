@@ -1,4 +1,6 @@
 #include "input_handler.h"
+#include <iostream>
+#include <sstream>
 
 InputHandler::InputHandler(SensorManager& sensorManager)
     : sensorManager(sensorManager)
@@ -19,6 +21,12 @@ void InputHandler::handleKey(int key)
     else if (key == GLFW_KEY_I)     { sensorManager.calibrateHips();  }
     else if (key == GLFW_KEY_O)     { sensorManager.calibrateChest(); }
     else if (key == GLFW_KEY_SPACE) {
+
+        // Temporarily suppress calibration messages
+        std::streambuf* oldBuf = std::cout.rdbuf();
+        std::ostringstream temp;
+        std::cout.rdbuf(temp.rdbuf());
+
         sensorManager.calibrateLFA();
         sensorManager.calibrateRFA();
         sensorManager.calibrateLUA();
@@ -29,6 +37,15 @@ void InputHandler::handleKey(int key)
         sensorManager.calibrateRSH();
         sensorManager.calibrateHips();
         sensorManager.calibrateChest();
+
+        // Restore terminal output
+        std::cout.rdbuf(oldBuf);
+
+        std::cout
+            << "Calibrated "
+            << "L_FA, R_FA, L_UA, R_UA, "
+            << "L_TH, L_SH, R_TH, R_SH, "
+            << "HIPS, CHEST\n";
     }
 }
 

@@ -8,6 +8,7 @@
 #include "sensor_manager.h"
 #include "renderer.h"
 #include "input_handler.h"
+#include "csv_logger.h"
 
 static GLFWwindow* g_window = nullptr;
 
@@ -27,11 +28,13 @@ int main()
 
     g_window = window;
     glfwMakeContextCurrent(window);
-    
+
+    CsvLogger csvLogger;
+    csvLogger.open();
+
     InputHandler inputHandler(sensorManager);
     glfwSetKeyCallback(window, keyCallbackDispatcher);
     glfwSetWindowUserPointer(window, &inputHandler);
-
 
     Renderer renderer;
     renderer.initialize();
@@ -45,25 +48,31 @@ int main()
         if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
             renderer.setCameraView(CameraView::SIDE);
 
-        glm::quat correctedLFA = sensorManager.getCorrectedLFAQuat();   // was HIPS → left forearm
-        glm::quat correctedRFA = sensorManager.getCorrectedRFAQuat();   // was CHEST → right forearm
-        glm::quat correctedLUA = sensorManager.getCorrectedLUAQuat();
-        glm::quat correctedRUA = sensorManager.getCorrectedRUAQuat();   // was L_FA → right upper arm
+        glm::quat correctedLFA   = sensorManager.getCorrectedLFAQuat();
+        glm::quat correctedRFA   = sensorManager.getCorrectedRFAQuat();
+        glm::quat correctedLUA   = sensorManager.getCorrectedLUAQuat();
+        glm::quat correctedRUA   = sensorManager.getCorrectedRUAQuat();
 
-        glm::quat correctedLTH = sensorManager.getCorrectedLTHQuat();
-        glm::quat correctedLSH = sensorManager.getCorrectedLSHQuat();
-        glm::quat correctedRTH = sensorManager.getCorrectedRTHQuat();
-        glm::quat correctedRSH = sensorManager.getCorrectedRSHQuat();
+        glm::quat correctedLTH   = sensorManager.getCorrectedLTHQuat();
+        glm::quat correctedLSH   = sensorManager.getCorrectedLSHQuat();
+        glm::quat correctedRTH   = sensorManager.getCorrectedRTHQuat();
+        glm::quat correctedRSH   = sensorManager.getCorrectedRSHQuat();
         glm::quat correctedHips  = sensorManager.getCorrectedHipsQuat();
         glm::quat correctedChest = sensorManager.getCorrectedChestQuat();
 
         renderer.render(correctedLFA, correctedRFA, correctedLUA, correctedRUA,
                         correctedLTH, correctedRTH, correctedLSH, correctedRSH,
                         correctedHips, correctedChest);
+
+        csvLogger.log(correctedLFA, correctedRFA, correctedLUA, correctedRUA,
+                      correctedLTH, correctedLSH, correctedRTH, correctedRSH,
+                      correctedHips, correctedChest);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+    csvLogger.close();
     receiver.detach();
     glfwTerminate();
     return 0;
