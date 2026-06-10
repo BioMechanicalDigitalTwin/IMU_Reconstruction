@@ -322,13 +322,13 @@ void GltfModel::updateArmBones(const glm::quat& leftForearmQ,
     }
 
     computeGlobals();
-    applyWorldDirection(leftArm, leftUpperArmQ * glm::vec3(0.0f, -1.0f, 0.0f));
+    applyWorldDirection(leftArm, leftUpperArmQ * glm::vec3(0.0f, -1.0f, -0.2f));
     computeGlobals();
-    applyWorldDirection(leftForeArm, leftForearmQ * glm::vec3(0.0f, -1.0f, 0.0f));
+    applyWorldDirection(leftForeArm, leftForearmQ * glm::vec3(0.0f, -1.0f, -0.2f));
     computeGlobals();
-    applyWorldDirection(rightArm, rightUpperArmQ * glm::vec3(0.0f, -1.0f, 0.0f));
+    applyWorldDirection(rightArm, rightUpperArmQ * glm::vec3(0.0f, -1.0f, -0.2f));
     computeGlobals();
-    applyWorldDirection(rightForeArm, rightForearmQ * glm::vec3(0.0f, -1.0f, 0.0f));
+    applyWorldDirection(rightForeArm, rightForearmQ * glm::vec3(0.0f, -1.0f, -0.2f));
     computeGlobals();
 }
 
