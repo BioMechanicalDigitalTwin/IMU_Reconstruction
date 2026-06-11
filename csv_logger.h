@@ -2,32 +2,40 @@
 #include <string>
 #include <fstream>
 #include <chrono>
+#include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
+
+struct SensorSample {
+    std::string label;  // e.g. "L_FA"
+    glm::quat   q;
+};
 
 class CsvLogger {
 public:
     CsvLogger();
     ~CsvLogger();
 
-    // Call once after OpenGL init, before render loop
     bool open();
 
-    // Call every frame with the 10 corrected quats
-    void log(const glm::quat& lfa, const glm::quat& rfa,
-             const glm::quat& lua, const glm::quat& rua,
-             const glm::quat& lth, const glm::quat& lsh,
-             const glm::quat& rth, const glm::quat& rsh,
-             const glm::quat& hips, const glm::quat& chest);
+    // Pass ALL corrected quats every frame; identity = not yet received
+    // Use isActive flags to tell logger which sensors are actually live
+    void log(const std::vector<SensorSample>& samples,
+             const std::vector<bool>& active);
 
     void close();
 
 private:
     std::ofstream file;
     std::chrono::steady_clock::time_point startTime;
-    int frameCount = 0;
-    static constexpr int kFlushEveryN = 60; // flush ~every second at 60Hz
+    int  frameCount   = 0;
+    bool headerWritten = false;
+
+    // Locked-in column order after first frame
+    std::vector<int> activeIndices;  // indices into the samples vector
+
+    static constexpr int kFlushEveryN = 60;
 
     static std::string makeFilepath();
-    static bool ensureDir(const std::string& dir);
+    static bool        ensureDir(const std::string& dir);
 };

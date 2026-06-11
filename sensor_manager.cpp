@@ -73,6 +73,7 @@ glm::quat SensorManager::computeCorrectedQuat(const glm::quat& sensorQuat,
     q.z = -q.z;
     return glm::normalize(q);
 }
+
 glm::quat SensorManager::smoothCorrectedQuat(glm::quat& current,
                                               bool& initialized,
                                               const glm::quat& target) const
@@ -85,7 +86,6 @@ glm::quat SensorManager::smoothCorrectedQuat(glm::quat& current,
     const float angle = 2.0f * std::acos(std::abs(dot));
     if (angle < kDeadbandRadians) return current;
 
-    // Continuous alpha — smooth curve instead of hard jump
     const float t     = glm::smoothstep(0.05f, 0.35f, angle);
     const float alpha = glm::mix(kSmoothingAlpha, kFastSmoothingAlpha, t);
     current = glm::normalize(glm::slerp(current, nt, alpha));
@@ -112,16 +112,16 @@ void SensorManager::autoRecalibrate(glm::quat& calibRef,
 
 // ── setters ───────────────────────────────────────────────────────────────────
 
-void SensorManager::setLFAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex1);  updateSensorQuat(sensorQuatLFA, q); }
-void SensorManager::setRFAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex2);  updateSensorQuat(sensorQuatRFA, q); }
-void SensorManager::setLUAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex3);  updateSensorQuat(sensorQuat3,   q); }
-void SensorManager::setRUAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex4);  updateSensorQuat(sensorQuatRUA, q); }
-void SensorManager::setLTHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex5);  updateSensorQuat(sensorQuat5,   q); }
-void SensorManager::setLSHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex6);  updateSensorQuat(sensorQuat6,   q); }
-void SensorManager::setRTHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex7);  updateSensorQuat(sensorQuat7,   q); }
-void SensorManager::setRSHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex8);  updateSensorQuat(sensorQuat8,   q); }
-void SensorManager::setHipsQuat(const glm::quat& q) { std::lock_guard<std::mutex> l(quatMutex9);  updateSensorQuat(sensorQuat9,   q); }
-void SensorManager::setChestQuat(const glm::quat& q){ std::lock_guard<std::mutex> l(quatMutex10); updateSensorQuat(sensorQuat10,  q); }
+void SensorManager::setLFAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex1);  updateSensorQuat(sensorQuatLFA, q); activeLFA   = true; }
+void SensorManager::setRFAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex2);  updateSensorQuat(sensorQuatRFA, q); activeRFA   = true; }
+void SensorManager::setLUAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex3);  updateSensorQuat(sensorQuat3,   q); activeLUA   = true; }
+void SensorManager::setRUAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex4);  updateSensorQuat(sensorQuatRUA, q); activeRUA   = true; }
+void SensorManager::setLTHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex5);  updateSensorQuat(sensorQuat5,   q); activeLTH   = true; }
+void SensorManager::setLSHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex6);  updateSensorQuat(sensorQuat6,   q); activeLSH   = true; }
+void SensorManager::setRTHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex7);  updateSensorQuat(sensorQuat7,   q); activeRTH   = true; }
+void SensorManager::setRSHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex8);  updateSensorQuat(sensorQuat8,   q); activeRSH   = true; }
+void SensorManager::setHipsQuat(const glm::quat& q) { std::lock_guard<std::mutex> l(quatMutex9);  updateSensorQuat(sensorQuat9,   q); activeHips  = true; }
+void SensorManager::setChestQuat(const glm::quat& q){ std::lock_guard<std::mutex> l(quatMutex10); updateSensorQuat(sensorQuat10,  q); activeChest = true; }
 
 // ── getters ───────────────────────────────────────────────────────────────────
 
@@ -135,6 +135,19 @@ glm::quat SensorManager::getRTHQuat()  const { std::lock_guard<std::mutex> l(qua
 glm::quat SensorManager::getRSHQuat()  const { std::lock_guard<std::mutex> l(quatMutex8);  return sensorQuat8;   }
 glm::quat SensorManager::getHipsQuat() const { std::lock_guard<std::mutex> l(quatMutex9);  return sensorQuat9;   }
 glm::quat SensorManager::getChestQuat()const { std::lock_guard<std::mutex> l(quatMutex10); return sensorQuat10;  }
+
+// ── active flags ──────────────────────────────────────────────────────────────
+
+bool SensorManager::isLFAActive()   const { std::lock_guard<std::mutex> l(quatMutex1);  return activeLFA;   }
+bool SensorManager::isRFAActive()   const { std::lock_guard<std::mutex> l(quatMutex2);  return activeRFA;   }
+bool SensorManager::isLUAActive()   const { std::lock_guard<std::mutex> l(quatMutex3);  return activeLUA;   }
+bool SensorManager::isRUAActive()   const { std::lock_guard<std::mutex> l(quatMutex4);  return activeRUA;   }
+bool SensorManager::isLTHActive()   const { std::lock_guard<std::mutex> l(quatMutex5);  return activeLTH;   }
+bool SensorManager::isLSHActive()   const { std::lock_guard<std::mutex> l(quatMutex6);  return activeLSH;   }
+bool SensorManager::isRTHActive()   const { std::lock_guard<std::mutex> l(quatMutex7);  return activeRTH;   }
+bool SensorManager::isRSHActive()   const { std::lock_guard<std::mutex> l(quatMutex8);  return activeRSH;   }
+bool SensorManager::isHipsActive()  const { std::lock_guard<std::mutex> l(quatMutex9);  return activeHips;  }
+bool SensorManager::isChestActive() const { std::lock_guard<std::mutex> l(quatMutex10); return activeChest; }
 
 // ── calibration ───────────────────────────────────────────────────────────────
 
@@ -159,7 +172,7 @@ void SensorManager::toggleQuaternionConvention()
     std::cout << "Quaternion mode " << (mode + 1) << "/4. Recalibrate.\n";
 }
 
-// ── corrected getters (autoRecalibrate wired in) ──────────────────────────────
+// ── corrected getters ─────────────────────────────────────────────────────────
 
 glm::quat SensorManager::getCorrectedLFAQuat() const {
     auto q = getLFAQuat();

@@ -61,10 +61,22 @@ public:
     glm::quat getCorrectedHipsQuat()  const;
     glm::quat getCorrectedChestQuat() const;
 
+    // Active sensor detection
+    bool isLFAActive()   const;
+    bool isRFAActive()   const;
+    bool isLUAActive()   const;
+    bool isRUAActive()   const;
+    bool isLTHActive()   const;
+    bool isLSHActive()   const;
+    bool isRTHActive()   const;
+    bool isRSHActive()   const;
+    bool isHipsActive()  const;
+    bool isChestActive() const;
+
 private:
     static constexpr float kSmoothingAlpha       = 0.35f;
     static constexpr float kFastSmoothingAlpha   = 0.70f;
-    static constexpr float kDeadbandRadians      = 0.003f;  // widened from 0.0009
+    static constexpr float kDeadbandRadians      = 0.003f;
     static constexpr float kFastMotionRadians    = 0.20f;
     static constexpr float kStationaryThreshold  = 0.002f;
     static constexpr float kStationaryTimeMs     = 1500.0f;
@@ -72,11 +84,9 @@ private:
 
     std::atomic<int> quaternionMode;
 
-    // Per-sensor state block — repeated 10 times
-    // Each block: quatMutex, sensorQuat, calibMutex, calibRef, smoothed, hasSmoothed, lastQ, stationaryTimer
-
     mutable std::mutex quatMutex1;
     glm::quat sensorQuatLFA;
+    bool activeLFA = false;
     mutable std::mutex calibMutex1;
     mutable glm::quat calibrationReferenceLFA;
     mutable glm::quat smoothedCorrectedLFA;
@@ -86,6 +96,7 @@ private:
 
     mutable std::mutex quatMutex2;
     glm::quat sensorQuatRFA;
+    bool activeRFA = false;
     mutable std::mutex calibMutex2;
     mutable glm::quat calibrationReferenceRFA;
     mutable glm::quat smoothedCorrectedRFA;
@@ -95,6 +106,7 @@ private:
 
     mutable std::mutex quatMutex3;
     glm::quat sensorQuat3;
+    bool activeLUA = false;
     mutable std::mutex calibMutex3;
     mutable glm::quat calibrationReference3;
     mutable glm::quat smoothedCorrected3;
@@ -104,6 +116,7 @@ private:
 
     mutable std::mutex quatMutex4;
     glm::quat sensorQuatRUA;
+    bool activeRUA = false;
     mutable std::mutex calibMutex4;
     mutable glm::quat calibrationReferenceRUA;
     mutable glm::quat smoothedCorrectedRUA;
@@ -113,6 +126,7 @@ private:
 
     mutable std::mutex quatMutex5;
     glm::quat sensorQuat5;
+    bool activeLTH = false;
     mutable std::mutex calibMutex5;
     mutable glm::quat calibrationReference5;
     mutable glm::quat smoothedCorrected5;
@@ -122,6 +136,7 @@ private:
 
     mutable std::mutex quatMutex6;
     glm::quat sensorQuat6;
+    bool activeLSH = false;
     mutable std::mutex calibMutex6;
     mutable glm::quat calibrationReference6;
     mutable glm::quat smoothedCorrected6;
@@ -131,6 +146,7 @@ private:
 
     mutable std::mutex quatMutex7;
     glm::quat sensorQuat7;
+    bool activeRTH = false;
     mutable std::mutex calibMutex7;
     mutable glm::quat calibrationReference7;
     mutable glm::quat smoothedCorrected7;
@@ -140,6 +156,7 @@ private:
 
     mutable std::mutex quatMutex8;
     glm::quat sensorQuat8;
+    bool activeRSH = false;
     mutable std::mutex calibMutex8;
     mutable glm::quat calibrationReference8;
     mutable glm::quat smoothedCorrected8;
@@ -149,6 +166,7 @@ private:
 
     mutable std::mutex quatMutex9;
     glm::quat sensorQuat9;
+    bool activeHips = false;
     mutable std::mutex calibMutex9;
     mutable glm::quat calibrationReference9;
     mutable glm::quat smoothedCorrected9;
@@ -158,6 +176,7 @@ private:
 
     mutable std::mutex quatMutex10;
     glm::quat sensorQuat10;
+    bool activeChest = false;
     mutable std::mutex calibMutex10;
     mutable glm::quat calibrationReference10;
     mutable glm::quat smoothedCorrected10;

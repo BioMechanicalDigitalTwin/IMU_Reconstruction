@@ -1,6 +1,7 @@
 #include <GLFW/glfw3.h>
 #include <thread>
 #include <mutex>
+#include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
@@ -20,7 +21,7 @@ int main()
     if(!glfwInit())
         return -1;
 
-    GLFWwindow* window = glfwCreateWindow(1400, 900, 
+    GLFWwindow* window = glfwCreateWindow(1400, 900,
         "IMU Visualizer - L_FA, R_FA, L_UA, R_UA, L_TH, L_SH, R_TH, R_SH", nullptr, nullptr);
 
     if(!window)
@@ -52,7 +53,6 @@ int main()
         glm::quat correctedRFA   = sensorManager.getCorrectedRFAQuat();
         glm::quat correctedLUA   = sensorManager.getCorrectedLUAQuat();
         glm::quat correctedRUA   = sensorManager.getCorrectedRUAQuat();
-
         glm::quat correctedLTH   = sensorManager.getCorrectedLTHQuat();
         glm::quat correctedLSH   = sensorManager.getCorrectedLSHQuat();
         glm::quat correctedRTH   = sensorManager.getCorrectedRTHQuat();
@@ -64,9 +64,31 @@ int main()
                         correctedLTH, correctedRTH, correctedLSH, correctedRSH,
                         correctedHips, correctedChest);
 
-        csvLogger.log(correctedLFA, correctedRFA, correctedLUA, correctedRUA,
-                      correctedLTH, correctedLSH, correctedRTH, correctedRSH,
-                      correctedHips, correctedChest);
+        std::vector<SensorSample> samples = {
+            { "L_FA",  correctedLFA   },
+            { "R_FA",  correctedRFA   },
+            { "L_UA",  correctedLUA   },
+            { "R_UA",  correctedRUA   },
+            { "L_TH",  correctedLTH   },
+            { "L_SH",  correctedLSH   },
+            { "R_TH",  correctedRTH   },
+            { "R_SH",  correctedRSH   },
+            { "HIPS",  correctedHips  },
+            { "CHEST", correctedChest },
+        };
+        std::vector<bool> active = {
+            sensorManager.isLFAActive(),
+            sensorManager.isRFAActive(),
+            sensorManager.isLUAActive(),
+            sensorManager.isRUAActive(),
+            sensorManager.isLTHActive(),
+            sensorManager.isLSHActive(),
+            sensorManager.isRTHActive(),
+            sensorManager.isRSHActive(),
+            sensorManager.isHipsActive(),
+            sensorManager.isChestActive(),
+        };
+        csvLogger.log(samples, active);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
