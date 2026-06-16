@@ -24,6 +24,9 @@ void InputHandler::handleKey(int key)
     } else if (key == GLFW_KEY_M) {
         sensorManager.toggleQuaternionConvention();
         csvLogger.markCalibration("MODE_" + std::to_string(sensorManager.getQuaternionMode() + 1));
+    } else if (key == GLFW_KEY_P) {                           // ← NEW
+        sensorManager.toggleVerticalOffset();
+        csvLogger.markCalibration("VERTICAL_TOGGLE");
     } else if (key == GLFW_KEY_Z) {
         sensorManager.calibrateLTH();
         csvLogger.markCalibration("L_TH");

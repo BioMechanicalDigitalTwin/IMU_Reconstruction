@@ -10,7 +10,8 @@ SensorManager::SensorManager()
     , sensorQuat5(1,0,0,0),   sensorQuat6(1,0,0,0)
     , sensorQuat7(1,0,0,0),   sensorQuat8(1,0,0,0)
     , sensorQuat9(1,0,0,0),   sensorQuat10(1,0,0,0)
-    , quaternionMode(0)
+    , quaternionConvention(0)
+    , verticalMode(false)
     , calibrationReferenceLFA(1,0,0,0), smoothedCorrectedLFA(1,0,0,0)
     , hasSmoothedCorrectedLFA(false),   lastQLFA(1,0,0,0), stationaryTimerLFA(0)
     , calibrationReferenceRFA(1,0,0,0), smoothedCorrectedRFA(1,0,0,0)
@@ -32,7 +33,7 @@ SensorManager::SensorManager()
     , calibrationReference10(1,0,0,0),  smoothedCorrected10(1,0,0,0)
     , hasSmoothedCorrected10(false),    lastQ10(1,0,0,0), stationaryTimer10(0)
 {
-    std::cout << "Quaternion mode 1/4. Press M to cycle, then recalibrate.\n";
+    std::cout << "Quaternion mode 1/4 (horizontal). Press M to cycle conventions, P to toggle vertical mount.\n";
 }
 
 // ── core helpers ──────────────────────────────────────────────────────────────
@@ -50,13 +51,22 @@ glm::quat SensorManager::neutralPose() const
 }
 
 glm::quat SensorManager::computeMotionDelta(const glm::quat& sensorQuat,
-                                             const glm::quat& calibrationReference) const
+                                             const glm::quat& calibrationReference,
+                                             bool applyVertical) const
 {
     glm::quat current   = glm::normalize(sensorQuat);
     glm::quat reference = glm::normalize(calibrationReference);
+
+    // In vertical mode, remap the quaternion components directly
+    if (applyVertical) {
+        current   = remapQuat(current);
+        reference = remapQuat(reference);
+    }
+
     if (glm::dot(reference, current) < 0.0f) current = -current;
 
-    switch (quaternionMode.load()) {
+    int mode = quaternionConvention.load();
+    switch (mode) {
     case 0:  return glm::normalize(current * glm::inverse(reference));
     case 1:  return glm::normalize(glm::inverse(reference) * current);
     case 2:  return glm::normalize(glm::conjugate(current) * glm::inverse(glm::conjugate(reference)));
@@ -67,7 +77,7 @@ glm::quat SensorManager::computeMotionDelta(const glm::quat& sensorQuat,
 glm::quat SensorManager::computeCorrectedQuat(const glm::quat& sensorQuat,
                                                const glm::quat& calibrationReference) const
 {
-    glm::quat delta = computeMotionDelta(sensorQuat, calibrationReference);
+    glm::quat delta = computeMotionDelta(sensorQuat, calibrationReference, verticalMode.load());
     glm::quat q = glm::normalize(delta * neutralPose());
     q.x = -q.x;
     q.z = -q.z;
@@ -110,8 +120,7 @@ void SensorManager::autoRecalibrate(glm::quat& calibRef,
     lastQ = current;
 }
 
-// ── setters ───────────────────────────────────────────────────────────────────
-
+// ── setters (unchanged) ──────────────────────────────────────────────────────
 void SensorManager::setLFAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex1);  updateSensorQuat(sensorQuatLFA, q); activeLFA   = true; lastReceivedLFA   = std::chrono::steady_clock::now(); }
 void SensorManager::setRFAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex2);  updateSensorQuat(sensorQuatRFA, q); activeRFA   = true; lastReceivedRFA   = std::chrono::steady_clock::now(); }
 void SensorManager::setLUAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex3);  updateSensorQuat(sensorQuat3,   q); activeLUA   = true; lastReceivedLUA   = std::chrono::steady_clock::now(); }
@@ -123,8 +132,7 @@ void SensorManager::setRSHQuat(const glm::quat& q)  { std::lock_guard<std::mutex
 void SensorManager::setHipsQuat(const glm::quat& q) { std::lock_guard<std::mutex> l(quatMutex9);  updateSensorQuat(sensorQuat9,   q); activeHips  = true; lastReceivedHips  = std::chrono::steady_clock::now(); }
 void SensorManager::setChestQuat(const glm::quat& q){ std::lock_guard<std::mutex> l(quatMutex10); updateSensorQuat(sensorQuat10,  q); activeChest = true; lastReceivedChest = std::chrono::steady_clock::now(); }
 
-// ── getters ───────────────────────────────────────────────────────────────────
-
+// ── getters (unchanged) ──────────────────────────────────────────────────────
 glm::quat SensorManager::getLFAQuat()  const { std::lock_guard<std::mutex> l(quatMutex1);  return sensorQuatLFA; }
 glm::quat SensorManager::getRFAQuat()  const { std::lock_guard<std::mutex> l(quatMutex2);  return sensorQuatRFA; }
 glm::quat SensorManager::getLUAQuat()  const { std::lock_guard<std::mutex> l(quatMutex3);  return sensorQuat3;   }
@@ -136,8 +144,7 @@ glm::quat SensorManager::getRSHQuat()  const { std::lock_guard<std::mutex> l(qua
 glm::quat SensorManager::getHipsQuat() const { std::lock_guard<std::mutex> l(quatMutex9);  return sensorQuat9;   }
 glm::quat SensorManager::getChestQuat()const { std::lock_guard<std::mutex> l(quatMutex10); return sensorQuat10;  }
 
-// ── active flags ──────────────────────────────────────────────────────────────
-
+// ── active flags (unchanged) ─────────────────────────────────────────────────
 static bool notTimedOut(const std::chrono::steady_clock::time_point& t, int timeoutMs) {
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t).count();
@@ -155,8 +162,7 @@ bool SensorManager::isRSHActive()   const { std::lock_guard<std::mutex> l(quatMu
 bool SensorManager::isHipsActive()  const { std::lock_guard<std::mutex> l(quatMutex9);  return activeHips  && notTimedOut(lastReceivedHips,  kSensorTimeoutMs); }
 bool SensorManager::isChestActive() const { std::lock_guard<std::mutex> l(quatMutex10); return activeChest && notTimedOut(lastReceivedChest, kSensorTimeoutMs); }
 
-// ── calibration ───────────────────────────────────────────────────────────────
-
+// ── calibration (unchanged) ──────────────────────────────────────────────────
 void SensorManager::calibrateLFA()  { auto q = getLFAQuat();  std::lock_guard<std::mutex> l(calibMutex1);  calibrationReferenceLFA = glm::normalize(q); hasSmoothedCorrectedLFA = false; stationaryTimerLFA = 0; std::cout << "Calibrated L_FA\n"; }
 void SensorManager::calibrateRFA()  { auto q = getRFAQuat();  std::lock_guard<std::mutex> l(calibMutex2);  calibrationReferenceRFA = glm::normalize(q); hasSmoothedCorrectedRFA = false; stationaryTimerRFA = 0; std::cout << "Calibrated R_FA\n"; }
 void SensorManager::calibrateLUA()  { auto q = getLUAQuat();  std::lock_guard<std::mutex> l(calibMutex3);  calibrationReference3 = glm::normalize(q); hasSmoothedCorrected3 = false; stationaryTimer3 = 0; std::cout << "Calibrated L_UA\n"; }
@@ -170,16 +176,42 @@ void SensorManager::calibrateChest(){ auto q = getChestQuat();std::lock_guard<st
 
 void SensorManager::toggleQuaternionConvention()
 {
-    int mode = (quaternionMode.load() + 1) % 4;
-    quaternionMode.store(mode);
-    std::scoped_lock lock(calibMutex1, calibMutex2, calibMutex3, calibMutex4);
+    int mode = (quaternionConvention.load() + 1) % 4;
+    quaternionConvention.store(mode);
+    std::scoped_lock lock(calibMutex1, calibMutex2, calibMutex3, calibMutex4,
+                          calibMutex5, calibMutex6, calibMutex7, calibMutex8,
+                          calibMutex9, calibMutex10);
     hasSmoothedCorrectedLFA = hasSmoothedCorrectedRFA = false;
     hasSmoothedCorrected3   = hasSmoothedCorrectedRUA = false;
-    std::cout << "Quaternion mode " << (mode + 1) << "/4. Recalibrate.\n";
+    hasSmoothedCorrected5   = hasSmoothedCorrected6   = false;
+    hasSmoothedCorrected7   = hasSmoothedCorrected8   = false;
+    hasSmoothedCorrected9   = hasSmoothedCorrected10  = false;
+    int displayMode = getQuaternionMode();
+    std::cout << "Quaternion mode " << displayMode << "/8. Recalibrate.\n";
 }
 
-// ── corrected getters ─────────────────────────────────────────────────────────
+void SensorManager::toggleVerticalOffset()
+{
+    verticalMode.store(!verticalMode.load());
+    std::scoped_lock lock(calibMutex1, calibMutex2, calibMutex3, calibMutex4,
+                          calibMutex5, calibMutex6, calibMutex7, calibMutex8,
+                          calibMutex9, calibMutex10);
+    hasSmoothedCorrectedLFA = hasSmoothedCorrectedRFA = false;
+    hasSmoothedCorrected3   = hasSmoothedCorrectedRUA = false;
+    hasSmoothedCorrected5   = hasSmoothedCorrected6   = false;
+    hasSmoothedCorrected7   = hasSmoothedCorrected8   = false;
+    hasSmoothedCorrected9   = hasSmoothedCorrected10  = false;
+    int displayMode = getQuaternionMode();
+    std::cout << "Switched to " << (verticalMode.load() ? "vertical" : "horizontal")
+              << " mount. Current mode " << displayMode << "/8. Recalibrate.\n";
+}
 
+int SensorManager::getQuaternionMode() const
+{
+    return quaternionConvention.load() + 1 + (verticalMode.load() ? 4 : 0);
+}
+
+// ── corrected getters (unchanged) ────────────────────────────────────────────
 glm::quat SensorManager::getCorrectedLFAQuat() const {
     auto q = getLFAQuat();
     std::lock_guard<std::mutex> l(calibMutex1);

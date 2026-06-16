@@ -23,8 +23,9 @@ public:
     void calibrateRFA();
     void calibrateLUA();
     void calibrateRUA();
-    void toggleQuaternionConvention();
-    int  getQuaternionMode() const { return quaternionMode.load(); }
+    void toggleQuaternionConvention();   // M key – cycles 1..4
+    void toggleVerticalOffset();         // P key – toggles vertical mount
+    int  getQuaternionMode() const;      // returns 1..8 display mode
     
     glm::quat getCorrectedLFAQuat() const;
     glm::quat getCorrectedRFAQuat() const;
@@ -84,8 +85,35 @@ private:
     static constexpr float kDriftCorrAlpha      = 0.002f;
     static constexpr int   kSensorTimeoutMs     = 500;
 
-    std::atomic<int> quaternionMode;
+    std::atomic<int>  quaternionConvention;   // 0..3
+    std::atomic<bool> verticalMode;           // false = horizontal, true = vertical
 
+    // ── Vertical‑mount axis remap ──────────────────────────────────────────
+    // This table tells which source component goes to which destination,
+    // and with what sign.  Change only these numbers to correct your mount.
+    struct AxisMap {
+        int src;   // 0=x, 1=y, 2=z, 3=w  (4 = none, always 0)
+        float sign;
+    };
+    static constexpr AxisMap verticalRemap[4] = {
+        {1,  1.0f},  // body.x = sensor.y  (pitch – keep this)
+        {0,  1.0f},  // body.y = sensor.x  (was body.z, now swapped)
+        {2,  1.0f},  // body.z = sensor.z  (was body.y, now swapped)
+        {3,  1.0f}   // body.w = sensor.w
+    };
+    
+    // Helper: apply the remap table to a quaternion
+    static glm::quat remapQuat(const glm::quat& q) {
+        float comps[4] = {q.x, q.y, q.z, q.w};
+        glm::quat result;
+        result.x = verticalRemap[0].sign * comps[verticalRemap[0].src];
+        result.y = verticalRemap[1].sign * comps[verticalRemap[1].src];
+        result.z = verticalRemap[2].sign * comps[verticalRemap[2].src];
+        result.w = verticalRemap[3].sign * comps[verticalRemap[3].src];
+        return glm::normalize(result);
+    }
+
+    // ── sensor state (unchanged) ───────────────────────────────────────────
     mutable std::mutex quatMutex1;
     glm::quat sensorQuatLFA;
     bool activeLFA = false;
@@ -199,7 +227,8 @@ private:
     void updateSensorQuat(glm::quat& current, const glm::quat& incoming) const;
     glm::quat neutralPose() const;
     glm::quat computeMotionDelta(const glm::quat& sensorQuat,
-                                 const glm::quat& calibrationReference) const;
+                                 const glm::quat& calibrationReference,
+                                 bool applyVertical) const;
     glm::quat computeCorrectedQuat(const glm::quat& sensorQuat,
                                    const glm::quat& calibrationReference) const;
     glm::quat smoothCorrectedQuat(glm::quat& current,
