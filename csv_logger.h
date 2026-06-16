@@ -1,13 +1,14 @@
 #pragma once
 #include <string>
 #include <fstream>
+#include <sstream>
 #include <chrono>
 #include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
 struct SensorSample {
-    std::string label;  // e.g. "L_FA"
+    std::string label;
     glm::quat   q;
 };
 
@@ -17,25 +18,27 @@ public:
     ~CsvLogger();
 
     bool open();
-
-    // Pass ALL corrected quats every frame; identity = not yet received
-    // Use isActive flags to tell logger which sensors are actually live
     void log(const std::vector<SensorSample>& samples,
              const std::vector<bool>& active);
-
+    void markCalibration(const std::string& sensorLabel);
     void close();
 
 private:
     std::ofstream file;
-    std::chrono::steady_clock::time_point startTime;
-    int  frameCount   = 0;
+    std::chrono::steady_clock::time_point programStartTime;
+    int  frameCount    = 0;
     bool headerWritten = false;
+    bool needsRewrite  = false;   // true when a new sensor joined, rewrite on next frame
 
-    // Locked-in column order after first frame
-    std::vector<int> activeIndices;  // indices into the samples vector
+    std::vector<bool>        everSeen;
+    std::vector<std::string> lockedLabels;
+    std::string              currentPath;
 
-    static constexpr int kFlushEveryN = 60;
+    static constexpr double kSettleSeconds = 5.0;
+    static constexpr int    kFlushEveryN   = 60;
 
-    static std::string makeFilepath();
-    static bool        ensureDir(const std::string& dir);
+    std::string makeFilepath();
+    void        writeHeader(const std::vector<SensorSample>& samples);
+    void        rewriteWithNewHeader(const std::vector<SensorSample>& samples);
+    static bool ensureDir(const std::string& dir);
 };

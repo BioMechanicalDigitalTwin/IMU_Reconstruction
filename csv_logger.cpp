@@ -1,5 +1,7 @@
 #include "csv_logger.h"
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <iomanip>
 #include <ctime>
 #include <sys/stat.h>
@@ -19,9 +21,9 @@ std::string CsvLogger::makeFilepath()
     std::time_t t = std::time(nullptr);
     std::tm tm{};
     localtime_r(&t, &tm);
-    char buf[32];
-    std::strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", &tm);
-    return std::string("CSV/") + buf + ".csv";
+    char buf[64];
+    std::strftime(buf, sizeof(buf), "CSV/%Y%m%d_%H%M%S.csv", &tm);
+    return std::string(buf);
 }
 
 bool CsvLogger::open()
@@ -30,53 +32,131 @@ bool CsvLogger::open()
         std::cerr << "[CsvLogger] Failed to create CSV/ directory\n";
         return false;
     }
-    std::string path = makeFilepath();
-    file.open(path, std::ios::out | std::ios::trunc);
-    if (!file.is_open()) {
-        std::cerr << "[CsvLogger] Failed to open: " << path << "\n";
-        return false;
-    }
-    startTime = std::chrono::steady_clock::now();
-    std::cout << "[CsvLogger] Logging to: " << path << "\n";
+    programStartTime = std::chrono::steady_clock::now();
     return true;
+}
+
+void CsvLogger::writeHeader(const std::vector<SensorSample>& samples)
+{
+    lockedLabels.clear();
+    for (int i = 0; i < (int)everSeen.size(); ++i)
+        if (everSeen[i]) lockedLabels.push_back(samples[i].label);
+
+    file << "time";
+    for (const auto& lbl : lockedLabels)
+        file << ',' << lbl << "_w"
+             << ',' << lbl << "_x"
+             << ',' << lbl << "_y"
+             << ',' << lbl << "_z";
+    file << ",event\n";
+    file.flush();
+    headerWritten = true;
+}
+
+void CsvLogger::rewriteWithNewHeader(const std::vector<SensorSample>& samples)
+{
+    file.flush();
+    file.close();
+
+    std::string existingData;
+    {
+        std::ifstream reader(currentPath);
+        if (reader.is_open()) {
+            std::string oldHeader;
+            std::getline(reader, oldHeader);
+            std::ostringstream ss;
+            ss << reader.rdbuf();
+            existingData = ss.str();
+        }
+    }
+
+    file.open(currentPath, std::ios::out | std::ios::trunc);
+    if (!file.is_open()) {
+        std::cerr << "[CsvLogger] Failed to reopen for rewrite\n";
+        return;
+    }
+    writeHeader(samples);
+    if (!existingData.empty())
+        file << existingData;
+
+    std::cout << "[CsvLogger] Header updated with new sensor\n";
 }
 
 void CsvLogger::log(const std::vector<SensorSample>& samples,
                     const std::vector<bool>& active)
 {
+    if (everSeen.size() < active.size())
+        everSeen.resize(active.size(), false);
+
+    // Detect newly seen sensors
+    for (int i = 0; i < (int)active.size(); ++i) {
+        if (active[i] && !everSeen[i]) {
+            everSeen[i] = true;
+            if (headerWritten)
+                needsRewrite = true;
+        }
+    }
+
+    double elapsed = std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - programStartTime).count();
+
+    if (!headerWritten) {
+        if (elapsed < kSettleSeconds) return;
+
+        bool anySeen = false;
+        for (bool s : everSeen) if (s) { anySeen = true; break; }
+        if (!anySeen) return;
+
+        currentPath = makeFilepath();
+        file.open(currentPath, std::ios::out | std::ios::trunc);
+        if (!file.is_open()) {
+            std::cerr << "[CsvLogger] Failed to open: " << currentPath << "\n";
+            return;
+        }
+        std::cout << "[CsvLogger] Logging to: " << currentPath << "\n";
+        writeHeader(samples);
+        return;
+    }
+
+    if (needsRewrite) {
+        needsRewrite = false;
+        rewriteWithNewHeader(samples);
+        if (!file.is_open()) return;
+    }
+
     if (!file.is_open()) return;
 
-    // First frame: lock in which sensors are active, write header
-    if (!headerWritten) {
-        for (int i = 0; i < (int)active.size(); ++i) {
-            if (active[i]) activeIndices.push_back(i);
-        }
-        if (activeIndices.empty()) return;  // nothing online yet, wait
-
-        file << "time";
-        for (int idx : activeIndices) {
-            const std::string& lbl = samples[idx].label;
-            file << ',' << lbl << "_w"
-                 << ',' << lbl << "_x"
-                 << ',' << lbl << "_y"
-                 << ',' << lbl << "_z";
-        }
-        file << '\n';
-        headerWritten = true;
-    }
-
-    auto now     = std::chrono::steady_clock::now();
-    double elapsed = std::chrono::duration<double>(now - startTime).count();
     file << std::fixed << std::setprecision(6) << elapsed;
+    for (const auto& lbl : lockedLabels) {
+        int idx = -1;
+        for (int i = 0; i < (int)samples.size(); ++i)
+            if (samples[i].label == lbl) { idx = i; break; }
 
-    for (int idx : activeIndices) {
-        const glm::quat& q = samples[idx].q;
-        file << ',' << q.w << ',' << q.x << ',' << q.y << ',' << q.z;
+        if (idx >= 0 && idx < (int)active.size() && active[idx]) {
+            const glm::quat& q = samples[idx].q;
+            file << ',' << q.w << ',' << q.x << ',' << q.y << ',' << q.z;
+        } else {
+            file << ",,,,";
+        }
     }
-    file << '\n';
+    file << ",\n";
 
     if (++frameCount % kFlushEveryN == 0)
         file.flush();
+}
+
+void CsvLogger::markCalibration(const std::string& sensorLabel)
+{
+    if (!file.is_open()) return;
+
+    double elapsed = std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - programStartTime).count();
+
+    file << std::fixed << std::setprecision(6) << elapsed;
+    for (size_t i = 0; i < lockedLabels.size(); ++i)
+        file << ",,,,";
+    file << ",CALIBRATED_" << sensorLabel << "\n";
+    file.flush();
 }
 
 void CsvLogger::close()

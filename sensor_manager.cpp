@@ -112,16 +112,16 @@ void SensorManager::autoRecalibrate(glm::quat& calibRef,
 
 // ── setters ───────────────────────────────────────────────────────────────────
 
-void SensorManager::setLFAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex1);  updateSensorQuat(sensorQuatLFA, q); activeLFA   = true; }
-void SensorManager::setRFAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex2);  updateSensorQuat(sensorQuatRFA, q); activeRFA   = true; }
-void SensorManager::setLUAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex3);  updateSensorQuat(sensorQuat3,   q); activeLUA   = true; }
-void SensorManager::setRUAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex4);  updateSensorQuat(sensorQuatRUA, q); activeRUA   = true; }
-void SensorManager::setLTHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex5);  updateSensorQuat(sensorQuat5,   q); activeLTH   = true; }
-void SensorManager::setLSHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex6);  updateSensorQuat(sensorQuat6,   q); activeLSH   = true; }
-void SensorManager::setRTHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex7);  updateSensorQuat(sensorQuat7,   q); activeRTH   = true; }
-void SensorManager::setRSHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex8);  updateSensorQuat(sensorQuat8,   q); activeRSH   = true; }
-void SensorManager::setHipsQuat(const glm::quat& q) { std::lock_guard<std::mutex> l(quatMutex9);  updateSensorQuat(sensorQuat9,   q); activeHips  = true; }
-void SensorManager::setChestQuat(const glm::quat& q){ std::lock_guard<std::mutex> l(quatMutex10); updateSensorQuat(sensorQuat10,  q); activeChest = true; }
+void SensorManager::setLFAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex1);  updateSensorQuat(sensorQuatLFA, q); activeLFA   = true; lastReceivedLFA   = std::chrono::steady_clock::now(); }
+void SensorManager::setRFAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex2);  updateSensorQuat(sensorQuatRFA, q); activeRFA   = true; lastReceivedRFA   = std::chrono::steady_clock::now(); }
+void SensorManager::setLUAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex3);  updateSensorQuat(sensorQuat3,   q); activeLUA   = true; lastReceivedLUA   = std::chrono::steady_clock::now(); }
+void SensorManager::setRUAQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex4);  updateSensorQuat(sensorQuatRUA, q); activeRUA   = true; lastReceivedRUA   = std::chrono::steady_clock::now(); }
+void SensorManager::setLTHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex5);  updateSensorQuat(sensorQuat5,   q); activeLTH   = true; lastReceivedLTH   = std::chrono::steady_clock::now(); }
+void SensorManager::setLSHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex6);  updateSensorQuat(sensorQuat6,   q); activeLSH   = true; lastReceivedLSH   = std::chrono::steady_clock::now(); }
+void SensorManager::setRTHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex7);  updateSensorQuat(sensorQuat7,   q); activeRTH   = true; lastReceivedRTH   = std::chrono::steady_clock::now(); }
+void SensorManager::setRSHQuat(const glm::quat& q)  { std::lock_guard<std::mutex> l(quatMutex8);  updateSensorQuat(sensorQuat8,   q); activeRSH   = true; lastReceivedRSH   = std::chrono::steady_clock::now(); }
+void SensorManager::setHipsQuat(const glm::quat& q) { std::lock_guard<std::mutex> l(quatMutex9);  updateSensorQuat(sensorQuat9,   q); activeHips  = true; lastReceivedHips  = std::chrono::steady_clock::now(); }
+void SensorManager::setChestQuat(const glm::quat& q){ std::lock_guard<std::mutex> l(quatMutex10); updateSensorQuat(sensorQuat10,  q); activeChest = true; lastReceivedChest = std::chrono::steady_clock::now(); }
 
 // ── getters ───────────────────────────────────────────────────────────────────
 
@@ -138,16 +138,22 @@ glm::quat SensorManager::getChestQuat()const { std::lock_guard<std::mutex> l(qua
 
 // ── active flags ──────────────────────────────────────────────────────────────
 
-bool SensorManager::isLFAActive()   const { std::lock_guard<std::mutex> l(quatMutex1);  return activeLFA;   }
-bool SensorManager::isRFAActive()   const { std::lock_guard<std::mutex> l(quatMutex2);  return activeRFA;   }
-bool SensorManager::isLUAActive()   const { std::lock_guard<std::mutex> l(quatMutex3);  return activeLUA;   }
-bool SensorManager::isRUAActive()   const { std::lock_guard<std::mutex> l(quatMutex4);  return activeRUA;   }
-bool SensorManager::isLTHActive()   const { std::lock_guard<std::mutex> l(quatMutex5);  return activeLTH;   }
-bool SensorManager::isLSHActive()   const { std::lock_guard<std::mutex> l(quatMutex6);  return activeLSH;   }
-bool SensorManager::isRTHActive()   const { std::lock_guard<std::mutex> l(quatMutex7);  return activeRTH;   }
-bool SensorManager::isRSHActive()   const { std::lock_guard<std::mutex> l(quatMutex8);  return activeRSH;   }
-bool SensorManager::isHipsActive()  const { std::lock_guard<std::mutex> l(quatMutex9);  return activeHips;  }
-bool SensorManager::isChestActive() const { std::lock_guard<std::mutex> l(quatMutex10); return activeChest; }
+static bool notTimedOut(const std::chrono::steady_clock::time_point& t, int timeoutMs) {
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - t).count();
+    return ms < timeoutMs;
+}
+
+bool SensorManager::isLFAActive()   const { std::lock_guard<std::mutex> l(quatMutex1);  return activeLFA   && notTimedOut(lastReceivedLFA,   kSensorTimeoutMs); }
+bool SensorManager::isRFAActive()   const { std::lock_guard<std::mutex> l(quatMutex2);  return activeRFA   && notTimedOut(lastReceivedRFA,   kSensorTimeoutMs); }
+bool SensorManager::isLUAActive()   const { std::lock_guard<std::mutex> l(quatMutex3);  return activeLUA   && notTimedOut(lastReceivedLUA,   kSensorTimeoutMs); }
+bool SensorManager::isRUAActive()   const { std::lock_guard<std::mutex> l(quatMutex4);  return activeRUA   && notTimedOut(lastReceivedRUA,   kSensorTimeoutMs); }
+bool SensorManager::isLTHActive()   const { std::lock_guard<std::mutex> l(quatMutex5);  return activeLTH   && notTimedOut(lastReceivedLTH,   kSensorTimeoutMs); }
+bool SensorManager::isLSHActive()   const { std::lock_guard<std::mutex> l(quatMutex6);  return activeLSH   && notTimedOut(lastReceivedLSH,   kSensorTimeoutMs); }
+bool SensorManager::isRTHActive()   const { std::lock_guard<std::mutex> l(quatMutex7);  return activeRTH   && notTimedOut(lastReceivedRTH,   kSensorTimeoutMs); }
+bool SensorManager::isRSHActive()   const { std::lock_guard<std::mutex> l(quatMutex8);  return activeRSH   && notTimedOut(lastReceivedRSH,   kSensorTimeoutMs); }
+bool SensorManager::isHipsActive()  const { std::lock_guard<std::mutex> l(quatMutex9);  return activeHips  && notTimedOut(lastReceivedHips,  kSensorTimeoutMs); }
+bool SensorManager::isChestActive() const { std::lock_guard<std::mutex> l(quatMutex10); return activeChest && notTimedOut(lastReceivedChest, kSensorTimeoutMs); }
 
 // ── calibration ───────────────────────────────────────────────────────────────
 

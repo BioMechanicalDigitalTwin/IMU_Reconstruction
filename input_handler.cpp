@@ -2,27 +2,47 @@
 #include <iostream>
 #include <sstream>
 
-InputHandler::InputHandler(SensorManager& sensorManager)
-    : sensorManager(sensorManager)
+InputHandler::InputHandler(SensorManager& sensorManager, CsvLogger& csvLogger)
+    : sensorManager(sensorManager), csvLogger(csvLogger)
 {
 }
 
 void InputHandler::handleKey(int key)
 {
-    if      (key == GLFW_KEY_C)     { sensorManager.calibrateLFA();   }
-    else if (key == GLFW_KEY_V)     { sensorManager.calibrateRFA();   }
-    else if (key == GLFW_KEY_B)     { sensorManager.calibrateLUA();   }
-    else if (key == GLFW_KEY_N)     { sensorManager.calibrateRUA();   }
-    else if (key == GLFW_KEY_M)     { sensorManager.toggleQuaternionConvention(); }
-    else if (key == GLFW_KEY_Z)     { sensorManager.calibrateLTH(); }
-    else if (key == GLFW_KEY_X)     { sensorManager.calibrateLSH(); }
-    else if (key == GLFW_KEY_G)     { sensorManager.calibrateRTH(); }
-    else if (key == GLFW_KEY_H)     { sensorManager.calibrateRSH(); }
-    else if (key == GLFW_KEY_I)     { sensorManager.calibrateHips();  }
-    else if (key == GLFW_KEY_O)     { sensorManager.calibrateChest(); }
-    else if (key == GLFW_KEY_SPACE) {
-
-        // Temporarily suppress calibration messages
+    if (key == GLFW_KEY_C) {
+        sensorManager.calibrateLFA();
+        csvLogger.markCalibration("L_FA");
+    } else if (key == GLFW_KEY_V) {
+        sensorManager.calibrateRFA();
+        csvLogger.markCalibration("R_FA");
+    } else if (key == GLFW_KEY_B) {
+        sensorManager.calibrateLUA();
+        csvLogger.markCalibration("L_UA");
+    } else if (key == GLFW_KEY_N) {
+        sensorManager.calibrateRUA();
+        csvLogger.markCalibration("R_UA");
+    } else if (key == GLFW_KEY_M) {
+        sensorManager.toggleQuaternionConvention();
+        csvLogger.markCalibration("MODE_" + std::to_string(sensorManager.getQuaternionMode() + 1));
+    } else if (key == GLFW_KEY_Z) {
+        sensorManager.calibrateLTH();
+        csvLogger.markCalibration("L_TH");
+    } else if (key == GLFW_KEY_X) {
+        sensorManager.calibrateLSH();
+        csvLogger.markCalibration("L_SH");
+    } else if (key == GLFW_KEY_G) {
+        sensorManager.calibrateRTH();
+        csvLogger.markCalibration("R_TH");
+    } else if (key == GLFW_KEY_H) {
+        sensorManager.calibrateRSH();
+        csvLogger.markCalibration("R_SH");
+    } else if (key == GLFW_KEY_I) {
+        sensorManager.calibrateHips();
+        csvLogger.markCalibration("HIPS");
+    } else if (key == GLFW_KEY_O) {
+        sensorManager.calibrateChest();
+        csvLogger.markCalibration("CHEST");
+    } else if (key == GLFW_KEY_SPACE) {
         std::streambuf* oldBuf = std::cout.rdbuf();
         std::ostringstream temp;
         std::cout.rdbuf(temp.rdbuf());
@@ -38,26 +58,20 @@ void InputHandler::handleKey(int key)
         sensorManager.calibrateHips();
         sensorManager.calibrateChest();
 
-        // Restore terminal output
         std::cout.rdbuf(oldBuf);
-
-        std::cout
-            << "Calibrated "
-            << "L_FA, R_FA, L_UA, R_UA, "
-            << "L_TH, L_SH, R_TH, R_SH, "
-            << "HIPS, CHEST\n";
+        std::cout << "Calibrated "
+                  << "L_FA, R_FA, L_UA, R_UA, "
+                  << "L_TH, L_SH, R_TH, R_SH, "
+                  << "HIPS, CHEST\n";
+        csvLogger.markCalibration("ALL");
     }
 }
 
-void keyCallbackDispatcher(GLFWwindow* window, int key, int scancode, 
-                          int action, int mods)
+void keyCallbackDispatcher(GLFWwindow* window, int key, int scancode,
+                           int action, int mods)
 {
     if (action != GLFW_PRESS) return;
-    
     InputHandler* handler = static_cast<InputHandler*>(
         glfwGetWindowUserPointer(window));
-    
-    if (handler) {
-        handler->handleKey(key);
-    }
+    if (handler) handler->handleKey(key);
 }

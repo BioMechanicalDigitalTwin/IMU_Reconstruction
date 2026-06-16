@@ -33,7 +33,7 @@ int main()
     CsvLogger csvLogger;
     csvLogger.open();
 
-    InputHandler inputHandler(sensorManager);
+    InputHandler inputHandler(sensorManager, csvLogger);
     glfwSetKeyCallback(window, keyCallbackDispatcher);
     glfwSetWindowUserPointer(window, &inputHandler);
 
