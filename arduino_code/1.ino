@@ -1,8 +1,6 @@
-// MPU6050 Quaternion Multicast Streamer
- 
 
 #include <WiFi.h>
-#include <WiFiUDP.h>
+#include <WiFiUdp.h>
 #include <Wire.h>
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps612.h"
@@ -133,7 +131,7 @@ void loop() {
         connectWiFi();
         return;
     }
-t
+
     if (!heartbeatOn && now - lastHeartbeat >= 1000) {
         digitalWrite(LED_RED, LOW);     // ON
         heartbeatOn    = true;
