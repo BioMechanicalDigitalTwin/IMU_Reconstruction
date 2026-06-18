@@ -21,15 +21,19 @@ SensorManager::SensorManager()
     , smoothedLocalRFA(1,0,0,0), hasSmoothedLocalRFA(false)
     , calibrationReference3(1,0,0,0),   smoothedCorrected3(1,0,0,0)
     , hasSmoothedCorrected3(false),     lastQ3(1,0,0,0), stationaryTimer3(0)
+    , smoothedLocalLUA(1,0,0,0), hasSmoothedLocalLUA(false)
     , calibrationReferenceRUA(1,0,0,0), smoothedCorrectedRUA(1,0,0,0)
     , hasSmoothedCorrectedRUA(false),   lastQRUA(1,0,0,0), stationaryTimerRUA(0)
+    , smoothedLocalRUA(1,0,0,0), hasSmoothedLocalRUA(false)
     , calibrationReference5(1,0,0,0),   smoothedCorrected5(1,0,0,0)
     , hasSmoothedCorrected5(false),     lastQ5(1,0,0,0), stationaryTimer5(0)
+    , smoothedLocalLTH(1,0,0,0), hasSmoothedLocalLTH(false)
     , calibrationReference6(1,0,0,0),   smoothedCorrected6(1,0,0,0)
     , hasSmoothedCorrected6(false),     lastQ6(1,0,0,0), stationaryTimer6(0)
     , smoothedLocalLSH(1,0,0,0), hasSmoothedLocalLSH(false)
     , calibrationReference7(1,0,0,0),   smoothedCorrected7(1,0,0,0)
     , hasSmoothedCorrected7(false),     lastQ7(1,0,0,0), stationaryTimer7(0)
+    , smoothedLocalRTH(1,0,0,0), hasSmoothedLocalRTH(false)
     , calibrationReference8(1,0,0,0),   smoothedCorrected8(1,0,0,0)
     , hasSmoothedCorrected8(false),     lastQ8(1,0,0,0), stationaryTimer8(0)
     , smoothedLocalRSH(1,0,0,0), hasSmoothedLocalRSH(false)
@@ -169,11 +173,11 @@ bool SensorManager::isChestActive() const { std::lock_guard<std::mutex> l(quatMu
 // ── calibration ──────────────────────────────────────────────────────────────
 void SensorManager::calibrateLFA()  { auto q = getLFAQuat();  std::lock_guard<std::mutex> l(calibMutex1);  calibrationReferenceLFA = glm::normalize(q); hasSmoothedCorrectedLFA = false; stationaryTimerLFA = 0; hasSmoothedLocalLFA = false; std::cout << "Calibrated L_FA\n"; }
 void SensorManager::calibrateRFA()  { auto q = getRFAQuat();  std::lock_guard<std::mutex> l(calibMutex2);  calibrationReferenceRFA = glm::normalize(q); hasSmoothedCorrectedRFA = false; stationaryTimerRFA = 0; hasSmoothedLocalRFA = false; std::cout << "Calibrated R_FA\n"; }
-void SensorManager::calibrateLUA()  { auto q = getLUAQuat();  std::lock_guard<std::mutex> l(calibMutex3);  calibrationReference3 = glm::normalize(q); hasSmoothedCorrected3 = false; stationaryTimer3 = 0; hasSmoothedLocalLFA = false; std::cout << "Calibrated L_UA\n"; }
-void SensorManager::calibrateRUA()  { auto q = getRUAQuat();  std::lock_guard<std::mutex> l(calibMutex4);  calibrationReferenceRUA = glm::normalize(q); hasSmoothedCorrectedRUA = false; stationaryTimerRUA = 0; hasSmoothedLocalRFA = false; std::cout << "Calibrated R_UA\n"; }
-void SensorManager::calibrateLTH()  { auto q = getLTHQuat();  std::lock_guard<std::mutex> l(calibMutex5);  calibrationReference5 = glm::normalize(q); hasSmoothedCorrected5 = false; stationaryTimer5 = 0; hasSmoothedLocalLSH = false; std::cout << "Calibrated L_TH\n"; }
+void SensorManager::calibrateLUA()  { auto q = getLUAQuat();  std::lock_guard<std::mutex> l(calibMutex3);  calibrationReference3 = glm::normalize(q); hasSmoothedCorrected3 = false; stationaryTimer3 = 0; hasSmoothedLocalLUA = false; std::cout << "Calibrated L_UA\n"; }
+void SensorManager::calibrateRUA()  { auto q = getRUAQuat();  std::lock_guard<std::mutex> l(calibMutex4);  calibrationReferenceRUA = glm::normalize(q); hasSmoothedCorrectedRUA = false; stationaryTimerRUA = 0; hasSmoothedLocalRUA = false; std::cout << "Calibrated R_UA\n"; }
+void SensorManager::calibrateLTH()  { auto q = getLTHQuat();  std::lock_guard<std::mutex> l(calibMutex5);  calibrationReference5 = glm::normalize(q); hasSmoothedCorrected5 = false; stationaryTimer5 = 0; hasSmoothedLocalLTH = false; std::cout << "Calibrated L_TH\n"; }
 void SensorManager::calibrateLSH()  { auto q = getLSHQuat();  std::lock_guard<std::mutex> l(calibMutex6);  calibrationReference6 = glm::normalize(q); hasSmoothedCorrected6 = false; stationaryTimer6 = 0; hasSmoothedLocalLSH = false; std::cout << "Calibrated L_SH\n"; }
-void SensorManager::calibrateRTH()  { auto q = getRTHQuat();  std::lock_guard<std::mutex> l(calibMutex7);  calibrationReference7 = glm::normalize(q); hasSmoothedCorrected7 = false; stationaryTimer7 = 0; hasSmoothedLocalRSH = false; std::cout << "Calibrated R_TH\n"; }
+void SensorManager::calibrateRTH()  { auto q = getRTHQuat();  std::lock_guard<std::mutex> l(calibMutex7);  calibrationReference7 = glm::normalize(q); hasSmoothedCorrected7 = false; stationaryTimer7 = 0; hasSmoothedLocalRTH = false; std::cout << "Calibrated R_TH\n"; }
 void SensorManager::calibrateRSH()  { auto q = getRSHQuat();  std::lock_guard<std::mutex> l(calibMutex8);  calibrationReference8 = glm::normalize(q); hasSmoothedCorrected8 = false; stationaryTimer8 = 0; hasSmoothedLocalRSH = false; std::cout << "Calibrated R_SH\n"; }
 void SensorManager::calibrateHips() { auto q = getHipsQuat(); std::lock_guard<std::mutex> l(calibMutex9);  calibrationReference9 = glm::normalize(q); hasSmoothedCorrected9 = false; stationaryTimer9 = 0; std::cout << "Calibrated HIPS\n"; }
 void SensorManager::calibrateChest(){ auto q = getChestQuat();std::lock_guard<std::mutex> l(calibMutex10); calibrationReference10 = glm::normalize(q); hasSmoothedCorrected10 = false; stationaryTimer10 = 0; std::cout << "Calibrated CHEST\n"; }
@@ -191,6 +195,8 @@ void SensorManager::toggleQuaternionConvention()
     hasSmoothedCorrected7   = hasSmoothedCorrected8   = false;
     hasSmoothedCorrected9   = hasSmoothedCorrected10  = false;
     hasSmoothedLocalLFA = hasSmoothedLocalRFA = false;
+    hasSmoothedLocalLUA = hasSmoothedLocalRUA = false;
+    hasSmoothedLocalLTH = hasSmoothedLocalRTH = false;
     hasSmoothedLocalLSH = hasSmoothedLocalRSH = false;
     int displayMode = getQuaternionMode();
     std::cout << "Quaternion mode " << displayMode << "/8. Recalibrate.\n";
@@ -208,6 +214,8 @@ void SensorManager::toggleVerticalOffset()
     hasSmoothedCorrected7   = hasSmoothedCorrected8   = false;
     hasSmoothedCorrected9   = hasSmoothedCorrected10  = false;
     hasSmoothedLocalLFA = hasSmoothedLocalRFA = false;
+    hasSmoothedLocalLUA = hasSmoothedLocalRUA = false;
+    hasSmoothedLocalLTH = hasSmoothedLocalRTH = false;
     hasSmoothedLocalLSH = hasSmoothedLocalRSH = false;
     int displayMode = getQuaternionMode();
     std::cout << "Switched to " << (verticalMode.load() ? "vertical" : "horizontal")
@@ -219,19 +227,16 @@ int SensorManager::getQuaternionMode() const
     return quaternionConvention.load() + 1 + (verticalMode.load() ? 4 : 0);
 }
 
-// ── corrected getters ────────────────────────────────────────────────────────
+// ── corrected getters (now with full hierarchy) ──────────────────────────────
 
 glm::quat SensorManager::getCorrectedLFAQuat() const
 {
-    // 1. Get parent (LUA) raw corrected world quaternion (unsmoothed)
     glm::quat parentRawCorrected;
     {
         std::lock_guard<std::mutex> l(quatMutex3);
         std::lock_guard<std::mutex> lc(calibMutex3);
         parentRawCorrected = computeCorrectedQuat(sensorQuat3, calibrationReference3);
     }
-
-    // 2. Get child (LFA) raw corrected + drift correction
     glm::quat childRawCorrected;
     {
         std::lock_guard<std::mutex> l(quatMutex1);
@@ -239,19 +244,13 @@ glm::quat SensorManager::getCorrectedLFAQuat() const
         autoRecalibrate(calibrationReferenceLFA, lastQLFA, stationaryTimerLFA, sensorQuatLFA);
         childRawCorrected = computeCorrectedQuat(sensorQuatLFA, calibrationReferenceLFA);
     }
-
-    // 3. Raw local rotation
     glm::quat rawLocal = glm::normalize(glm::inverse(parentRawCorrected) * childRawCorrected);
-
-    // 4. Smooth the local rotation
     glm::quat smoothedLocal;
     {
         std::lock_guard<std::mutex> lc(calibMutex1);
         smoothCorrectedQuat(smoothedLocalLFA, hasSmoothedLocalLFA, rawLocal);
         smoothedLocal = smoothedLocalLFA;
     }
-
-    // 5. Reconstruct world child = parent smoothed * local smoothed
     glm::quat parentSmoothed = getCorrectedLUAQuat();
     return glm::normalize(parentSmoothed * smoothedLocal);
 }
@@ -284,31 +283,86 @@ glm::quat SensorManager::getCorrectedRFAQuat() const
 
 glm::quat SensorManager::getCorrectedLUAQuat() const
 {
-    auto q = getLUAQuat();
-    std::lock_guard<std::mutex> l(calibMutex3);
-    autoRecalibrate(calibrationReference3, lastQ3, stationaryTimer3, q);
-    return smoothCorrectedQuat(smoothedCorrected3, hasSmoothedCorrected3, computeCorrectedQuat(q, calibrationReference3));
+    // parent = Chest
+    glm::quat parentRawCorrected;
+    {
+        std::lock_guard<std::mutex> l(quatMutex10);
+        std::lock_guard<std::mutex> lc(calibMutex10);
+        parentRawCorrected = computeCorrectedQuat(sensorQuat10, calibrationReference10);
+    }
+    glm::quat childRawCorrected;
+    {
+        std::lock_guard<std::mutex> l(quatMutex3);
+        std::lock_guard<std::mutex> lc(calibMutex3);
+        autoRecalibrate(calibrationReference3, lastQ3, stationaryTimer3, sensorQuat3);
+        childRawCorrected = computeCorrectedQuat(sensorQuat3, calibrationReference3);
+    }
+    glm::quat rawLocal = glm::normalize(glm::inverse(parentRawCorrected) * childRawCorrected);
+    glm::quat smoothedLocal;
+    {
+        std::lock_guard<std::mutex> lc(calibMutex3);
+        smoothCorrectedQuat(smoothedLocalLUA, hasSmoothedLocalLUA, rawLocal);
+        smoothedLocal = smoothedLocalLUA;
+    }
+    glm::quat parentSmoothed = getCorrectedChestQuat();
+    return glm::normalize(parentSmoothed * smoothedLocal);
 }
 
 glm::quat SensorManager::getCorrectedRUAQuat() const
 {
-    auto q = getRUAQuat();
-    std::lock_guard<std::mutex> l(calibMutex4);
-    autoRecalibrate(calibrationReferenceRUA, lastQRUA, stationaryTimerRUA, q);
-    return smoothCorrectedQuat(smoothedCorrectedRUA, hasSmoothedCorrectedRUA, computeCorrectedQuat(q, calibrationReferenceRUA));
+    glm::quat parentRawCorrected;
+    {
+        std::lock_guard<std::mutex> l(quatMutex10);
+        std::lock_guard<std::mutex> lc(calibMutex10);
+        parentRawCorrected = computeCorrectedQuat(sensorQuat10, calibrationReference10);
+    }
+    glm::quat childRawCorrected;
+    {
+        std::lock_guard<std::mutex> l(quatMutex4);
+        std::lock_guard<std::mutex> lc(calibMutex4);
+        autoRecalibrate(calibrationReferenceRUA, lastQRUA, stationaryTimerRUA, sensorQuatRUA);
+        childRawCorrected = computeCorrectedQuat(sensorQuatRUA, calibrationReferenceRUA);
+    }
+    glm::quat rawLocal = glm::normalize(glm::inverse(parentRawCorrected) * childRawCorrected);
+    glm::quat smoothedLocal;
+    {
+        std::lock_guard<std::mutex> lc(calibMutex4);
+        smoothCorrectedQuat(smoothedLocalRUA, hasSmoothedLocalRUA, rawLocal);
+        smoothedLocal = smoothedLocalRUA;
+    }
+    glm::quat parentSmoothed = getCorrectedChestQuat();
+    return glm::normalize(parentSmoothed * smoothedLocal);
 }
 
 glm::quat SensorManager::getCorrectedLTHQuat() const
 {
-    auto q = getLTHQuat();
-    std::lock_guard<std::mutex> l(calibMutex5);
-    autoRecalibrate(calibrationReference5, lastQ5, stationaryTimer5, q);
-    return smoothCorrectedQuat(smoothedCorrected5, hasSmoothedCorrected5, computeCorrectedQuat(q, calibrationReference5));
+    // parent = Hips
+    glm::quat parentRawCorrected;
+    {
+        std::lock_guard<std::mutex> l(quatMutex9);
+        std::lock_guard<std::mutex> lc(calibMutex9);
+        parentRawCorrected = computeCorrectedQuat(sensorQuat9, calibrationReference9);
+    }
+    glm::quat childRawCorrected;
+    {
+        std::lock_guard<std::mutex> l(quatMutex5);
+        std::lock_guard<std::mutex> lc(calibMutex5);
+        autoRecalibrate(calibrationReference5, lastQ5, stationaryTimer5, sensorQuat5);
+        childRawCorrected = computeCorrectedQuat(sensorQuat5, calibrationReference5);
+    }
+    glm::quat rawLocal = glm::normalize(glm::inverse(parentRawCorrected) * childRawCorrected);
+    glm::quat smoothedLocal;
+    {
+        std::lock_guard<std::mutex> lc(calibMutex5);
+        smoothCorrectedQuat(smoothedLocalLTH, hasSmoothedLocalLTH, rawLocal);
+        smoothedLocal = smoothedLocalLTH;
+    }
+    glm::quat parentSmoothed = getCorrectedHipsQuat();
+    return glm::normalize(parentSmoothed * smoothedLocal);
 }
 
 glm::quat SensorManager::getCorrectedLSHQuat() const
 {
-    // parent = LTH
     glm::quat parentRawCorrected;
     {
         std::lock_guard<std::mutex> l(quatMutex5);
@@ -335,15 +389,32 @@ glm::quat SensorManager::getCorrectedLSHQuat() const
 
 glm::quat SensorManager::getCorrectedRTHQuat() const
 {
-    auto q = getRTHQuat();
-    std::lock_guard<std::mutex> l(calibMutex7);
-    autoRecalibrate(calibrationReference7, lastQ7, stationaryTimer7, q);
-    return smoothCorrectedQuat(smoothedCorrected7, hasSmoothedCorrected7, computeCorrectedQuat(q, calibrationReference7));
+    glm::quat parentRawCorrected;
+    {
+        std::lock_guard<std::mutex> l(quatMutex9);
+        std::lock_guard<std::mutex> lc(calibMutex9);
+        parentRawCorrected = computeCorrectedQuat(sensorQuat9, calibrationReference9);
+    }
+    glm::quat childRawCorrected;
+    {
+        std::lock_guard<std::mutex> l(quatMutex7);
+        std::lock_guard<std::mutex> lc(calibMutex7);
+        autoRecalibrate(calibrationReference7, lastQ7, stationaryTimer7, sensorQuat7);
+        childRawCorrected = computeCorrectedQuat(sensorQuat7, calibrationReference7);
+    }
+    glm::quat rawLocal = glm::normalize(glm::inverse(parentRawCorrected) * childRawCorrected);
+    glm::quat smoothedLocal;
+    {
+        std::lock_guard<std::mutex> lc(calibMutex7);
+        smoothCorrectedQuat(smoothedLocalRTH, hasSmoothedLocalRTH, rawLocal);
+        smoothedLocal = smoothedLocalRTH;
+    }
+    glm::quat parentSmoothed = getCorrectedHipsQuat();
+    return glm::normalize(parentSmoothed * smoothedLocal);
 }
 
 glm::quat SensorManager::getCorrectedRSHQuat() const
 {
-    // parent = RTH
     glm::quat parentRawCorrected;
     {
         std::lock_guard<std::mutex> l(quatMutex7);

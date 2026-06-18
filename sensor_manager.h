@@ -1,3 +1,4 @@
+// sensor_manager.h
 #pragma once
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -23,9 +24,9 @@ public:
     void calibrateRFA();
     void calibrateLUA();
     void calibrateRUA();
-    void toggleQuaternionConvention();   // M key – cycles 1..4
-    void toggleVerticalOffset();         // P key – toggles vertical mount
-    int  getQuaternionMode() const;      // returns 1..8 display mode
+    void toggleQuaternionConvention();
+    void toggleVerticalOffset();
+    int  getQuaternionMode() const;
     
     glm::quat getCorrectedLFAQuat() const;
     glm::quat getCorrectedRFAQuat() const;
@@ -85,19 +86,18 @@ private:
     static constexpr float kDriftCorrAlpha      = 0.002f;
     static constexpr int   kSensorTimeoutMs     = 500;
 
-    std::atomic<int>  quaternionConvention;   // 0..3
-    std::atomic<bool> verticalMode;           // false = horizontal, true = vertical
+    std::atomic<int>  quaternionConvention;
+    std::atomic<bool> verticalMode;
 
-    // ── Vertical‑mount axis remap ──────────────────────────────────────────
     struct AxisMap {
-        int src;   // 0=x, 1=y, 2=z, 3=w  (4 = none, always 0)
+        int src;
         float sign;
     };
     static constexpr AxisMap verticalRemap[4] = {
-        {1,  1.0f},  // body.x = sensor.y
-        {0,  1.0f},  // body.y = sensor.x
-        {2,  1.0f},  // body.z = sensor.z
-        {3,  1.0f}   // body.w = sensor.w
+        {1,  1.0f},
+        {0,  1.0f},
+        {2,  1.0f},
+        {3,  1.0f}
     };
     
     static glm::quat remapQuat(const glm::quat& q) {
@@ -111,6 +111,7 @@ private:
     }
 
     // ── sensor state ───────────────────────────────────────────────────────
+    // LFA
     mutable std::mutex quatMutex1;
     glm::quat sensorQuatLFA;
     bool activeLFA = false;
@@ -121,10 +122,10 @@ private:
     mutable bool hasSmoothedCorrectedLFA;
     mutable glm::quat lastQLFA;
     mutable float stationaryTimerLFA;
-    // local smoothing state for child (LFA relative to LUA)
     mutable glm::quat smoothedLocalLFA;
     mutable bool hasSmoothedLocalLFA;
 
+    // RFA
     mutable std::mutex quatMutex2;
     glm::quat sensorQuatRFA;
     bool activeRFA = false;
@@ -138,6 +139,7 @@ private:
     mutable glm::quat smoothedLocalRFA;
     mutable bool hasSmoothedLocalRFA;
 
+    // LUA
     mutable std::mutex quatMutex3;
     glm::quat sensorQuat3;
     bool activeLUA = false;
@@ -148,7 +150,10 @@ private:
     mutable bool hasSmoothedCorrected3;
     mutable glm::quat lastQ3;
     mutable float stationaryTimer3;
+    mutable glm::quat smoothedLocalLUA;       // NEW
+    mutable bool hasSmoothedLocalLUA;         // NEW
 
+    // RUA
     mutable std::mutex quatMutex4;
     glm::quat sensorQuatRUA;
     bool activeRUA = false;
@@ -159,7 +164,10 @@ private:
     mutable bool hasSmoothedCorrectedRUA;
     mutable glm::quat lastQRUA;
     mutable float stationaryTimerRUA;
+    mutable glm::quat smoothedLocalRUA;       // NEW
+    mutable bool hasSmoothedLocalRUA;         // NEW
 
+    // LTH
     mutable std::mutex quatMutex5;
     glm::quat sensorQuat5;
     bool activeLTH = false;
@@ -170,7 +178,10 @@ private:
     mutable bool hasSmoothedCorrected5;
     mutable glm::quat lastQ5;
     mutable float stationaryTimer5;
+    mutable glm::quat smoothedLocalLTH;       // NEW
+    mutable bool hasSmoothedLocalLTH;         // NEW
 
+    // LSH
     mutable std::mutex quatMutex6;
     glm::quat sensorQuat6;
     bool activeLSH = false;
@@ -184,6 +195,7 @@ private:
     mutable glm::quat smoothedLocalLSH;
     mutable bool hasSmoothedLocalLSH;
 
+    // RTH
     mutable std::mutex quatMutex7;
     glm::quat sensorQuat7;
     bool activeRTH = false;
@@ -194,7 +206,10 @@ private:
     mutable bool hasSmoothedCorrected7;
     mutable glm::quat lastQ7;
     mutable float stationaryTimer7;
+    mutable glm::quat smoothedLocalRTH;       // NEW
+    mutable bool hasSmoothedLocalRTH;         // NEW
 
+    // RSH
     mutable std::mutex quatMutex8;
     glm::quat sensorQuat8;
     bool activeRSH = false;
@@ -208,6 +223,7 @@ private:
     mutable glm::quat smoothedLocalRSH;
     mutable bool hasSmoothedLocalRSH;
 
+    // HIPS
     mutable std::mutex quatMutex9;
     glm::quat sensorQuat9;
     bool activeHips = false;
@@ -219,6 +235,7 @@ private:
     mutable glm::quat lastQ9;
     mutable float stationaryTimer9;
 
+    // CHEST
     mutable std::mutex quatMutex10;
     glm::quat sensorQuat10;
     bool activeChest = false;
