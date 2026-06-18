@@ -277,24 +277,35 @@ void GltfModel::computeGlobalsRecursive(int nodeIndex, const glm::mat4& parentMa
     }
 }
 
-void GltfModel::draw(const glm::quat& leftForearmQ,
-                     const glm::quat& rightForearmQ,
-                     const glm::quat& leftUpperArmQ,
-                     const glm::quat& rightUpperArmQ,
-                     const glm::quat& leftThighQ,
-                     const glm::quat& rightThighQ,
-                     const glm::quat& leftShinQ,
-                     const glm::quat& rightShinQ,
-                     const glm::quat& hipsQ,
-                     const glm::quat& chestQ)
+void GltfModel::draw(const glm::quat& leftForearmLocal,
+                     const glm::quat& rightForearmLocal,
+                     const glm::quat& leftUpperArmLocal,
+                     const glm::quat& rightUpperArmLocal,
+                     const glm::quat& leftThighLocal,
+                     const glm::quat& rightThighLocal,
+                     const glm::quat& leftShinLocal,
+                     const glm::quat& rightShinLocal,
+                     const glm::quat& chestWorld,
+                     const glm::quat& hipsWorld)
 {
-    if (!loaded) {
-        return;
-    }
+    if (!loaded) return;
 
-    updateArmBones(leftForearmQ, rightForearmQ, leftUpperArmQ, rightUpperArmQ);
-    updateTorsoBones(hipsQ, chestQ);
-    updateLegBones(leftThighQ, rightThighQ, leftShinQ, rightShinQ);
+    // Reset entire skeleton to bind pose once per frame
+    for (size_t i = 0; i < nodes.size(); ++i)
+        animatedLocalRotations[i] = nodes[i].rotation;
+    computeGlobals();
+
+    // Torso first: sets Hips and Chest bones (world‑space)
+    updateTorsoBones(hipsWorld, chestWorld);
+
+    // Arms: chest as root
+    updateArmBones(leftForearmLocal, rightForearmLocal,
+                   leftUpperArmLocal, rightUpperArmLocal,
+                   chestWorld);
+
+    // Legs: hips as root
+    updateLegBones(leftThighLocal, rightThighLocal,
+                   leftShinLocal, rightShinLocal, hipsWorld);
 
     glPushMatrix();
     glScalef(9.7f, 9.7f, 9.7f);
@@ -312,54 +323,73 @@ void GltfModel::draw(const glm::quat& leftForearmQ,
     glPopMatrix();
 }
 
-void GltfModel::updateArmBones(const glm::quat& leftForearmQ,
-                               const glm::quat& rightForearmQ,
-                               const glm::quat& leftUpperArmQ,
-                               const glm::quat& rightUpperArmQ)
+void GltfModel::updateArmBones(const glm::quat& leftForearmLocal,
+                               const glm::quat& rightForearmLocal,
+                               const glm::quat& leftUpperArmLocal,
+                               const glm::quat& rightUpperArmLocal,
+                               const glm::quat& chestWorldQ)
 {
-    for (size_t i = 0; i < nodes.size(); ++i) {
-        animatedLocalRotations[i] = nodes[i].rotation;
-    }
+    // Global matrices must be up‑to‑date before we read parent world rotations
+    computeGlobals();
 
+    // Upper arms = chestWorld * localArm
+    glm::quat lUAWorld = glm::normalize(chestWorldQ * leftUpperArmLocal);
+    applyWorldDirection(leftArm, lUAWorld * glm::vec3(0.0f, -1.0f, -0.2f));
     computeGlobals();
-    applyWorldDirection(leftArm, leftUpperArmQ * glm::vec3(0.0f, -1.0f, -0.2f));
+
+    glm::quat rUAWorld = glm::normalize(chestWorldQ * rightUpperArmLocal);
+    applyWorldDirection(rightArm, rUAWorld * glm::vec3(0.0f, -1.0f, -0.2f));
     computeGlobals();
-    applyWorldDirection(leftForeArm, leftForearmQ * glm::vec3(0.0f, -1.0f, -0.2f));
+
+    // Forearms = upper arm world * local forearm
+    glm::quat lFAWorld = glm::normalize(lUAWorld * leftForearmLocal);
+    applyWorldDirection(leftForeArm, lFAWorld * glm::vec3(0.0f, -1.0f, -0.2f));
     computeGlobals();
-    applyWorldDirection(rightArm, rightUpperArmQ * glm::vec3(0.0f, -1.0f, -0.2f));
-    computeGlobals();
-    applyWorldDirection(rightForeArm, rightForearmQ * glm::vec3(0.0f, -1.0f, -0.2f));
+
+    glm::quat rFAWorld = glm::normalize(rUAWorld * rightForearmLocal);
+    applyWorldDirection(rightForeArm, rFAWorld * glm::vec3(0.0f, -1.0f, -0.2f));
     computeGlobals();
 }
 
-void GltfModel::updateLegBones(const glm::quat& leftThighQ,
-                                const glm::quat& rightThighQ,
-                                const glm::quat& leftShinQ,
-                                const glm::quat& rightShinQ)
+void GltfModel::updateLegBones(const glm::quat& leftThighLocal,
+                                const glm::quat& rightThighLocal,
+                                const glm::quat& leftShinLocal,
+                                const glm::quat& rightShinLocal,
+                                const glm::quat& hipsWorld)
 {
-    applyWorldDirection(leftThigh,  leftThighQ  * glm::vec3(0.0f, -1.0f, 0.0f));
+    // Hips is already set; compute globals to get its world rotation
     computeGlobals();
-    applyWorldDirection(leftShin,   leftShinQ   * glm::vec3(0.0f, -1.0f, 0.0f));
+
+    // Thighs
+    glm::quat lTHWorld = glm::normalize(hipsWorld * leftThighLocal);
+    applyWorldDirection(leftThigh, lTHWorld * glm::vec3(0.0f, -1.0f, 0.0f));
     computeGlobals();
-    applyWorldDirection(rightThigh, rightThighQ * glm::vec3(0.0f, -1.0f, 0.0f));
+
+    glm::quat rTHWorld = glm::normalize(hipsWorld * rightThighLocal);
+    applyWorldDirection(rightThigh, rTHWorld * glm::vec3(0.0f, -1.0f, 0.0f));
     computeGlobals();
-    applyWorldDirection(rightShin,  rightShinQ  * glm::vec3(0.0f, -1.0f, 0.0f));
+
+    // Shins
+    glm::quat lSHWorld = glm::normalize(lTHWorld * leftShinLocal);
+    applyWorldDirection(leftShin, lSHWorld * glm::vec3(0.0f, -1.0f, 0.0f));
+    computeGlobals();
+
+    glm::quat rSHWorld = glm::normalize(rTHWorld * rightShinLocal);
+    applyWorldDirection(rightShin, rSHWorld * glm::vec3(0.0f, -1.0f, 0.0f));
     computeGlobals();
 }
 
-void GltfModel::updateTorsoBones(const glm::quat& hipsQ, const glm::quat& chestQ)
+void GltfModel::updateTorsoBones(const glm::quat& hipsWorld, const glm::quat& chestWorld)
 {
-    applyWorldDirection(hips,  hipsQ  * glm::vec3(0.0f, 1.0f, 0.0f));
+    applyWorldDirection(hips,  hipsWorld  * glm::vec3(0.0f, 1.0f, 0.0f));
     computeGlobals();
-    applyWorldDirection(chest, chestQ * glm::vec3(0.0f, 1.0f, 0.0f));
+    applyWorldDirection(chest, chestWorld * glm::vec3(0.0f, 1.0f, 0.0f));
     computeGlobals();
 }
 
 void GltfModel::applyWorldRotation(const BoneTarget& target, const glm::quat& worldRotation)
 {
-    if (!target.valid) {
-        return;
-    }
+    if (!target.valid) return;
 
     glm::quat parentWorld(1.0f, 0.0f, 0.0f, 0.0f);
     int parent = nodes[target.node].parent;
@@ -372,9 +402,7 @@ void GltfModel::applyWorldRotation(const BoneTarget& target, const glm::quat& wo
 
 void GltfModel::applyWorldDirection(const BoneTarget& target, const glm::vec3& worldDirection)
 {
-    if (!target.valid || glm::length(worldDirection) < 1e-6f) {
-        return;
-    }
+    if (!target.valid || glm::length(worldDirection) < 1e-6f) return;
 
     glm::quat parentWorld(1.0f, 0.0f, 0.0f, 0.0f);
     int parent = nodes[target.node].parent;
@@ -383,9 +411,7 @@ void GltfModel::applyWorldDirection(const BoneTarget& target, const glm::vec3& w
     }
 
     glm::vec3 childLocal = nodes[target.child].translation;
-    if (glm::length(childLocal) < 1e-6f) {
-        return;
-    }
+    if (glm::length(childLocal) < 1e-6f) return;
 
     glm::vec3 currentDirection = glm::normalize(nodes[target.node].rotation * glm::normalize(childLocal));
     glm::vec3 targetDirection = glm::normalize(glm::inverse(parentWorld) * glm::normalize(worldDirection));
@@ -402,17 +428,14 @@ void GltfModel::prepareBoneTarget(BoneTarget& target, const char* nodeName, cons
         std::cerr << "Missing GLB bone target: " << nodeName << " -> " << childName << "\n";
         return;
     }
-
     target.alignment = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 }
 
 int GltfModel::findNode(const std::string& name) const
 {
-    for (size_t i = 0; i < nodes.size(); ++i) {
-        if (nodes[i].name == name) {
+    for (size_t i = 0; i < nodes.size(); ++i)
+        if (nodes[i].name == name)
             return static_cast<int>(i);
-        }
-    }
     return -1;
 }
 
@@ -436,14 +459,11 @@ glm::quat GltfModel::rotationBetween(glm::vec3 from, glm::vec3 to) const
     from = glm::normalize(from);
     to = glm::normalize(to);
     float cosTheta = glm::clamp(glm::dot(from, to), -1.0f, 1.0f);
-    if (cosTheta > 0.9999f) {
-        return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-    }
+    if (cosTheta > 0.9999f) return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     if (cosTheta < -0.9999f) {
         glm::vec3 axis = glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), from);
-        if (glm::length(axis) < 1e-5f) {
+        if (glm::length(axis) < 1e-5f)
             axis = glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), from);
-        }
         return glm::angleAxis(glm::radians(180.0f), glm::normalize(axis));
     }
     glm::vec3 axis = glm::normalize(glm::cross(from, to));
@@ -452,9 +472,8 @@ glm::quat GltfModel::rotationBetween(glm::vec3 from, glm::vec3 to) const
 
 glm::mat4 GltfModel::skinMatrix(const Skin& skin, int jointSlot) const
 {
-    if (jointSlot < 0 || jointSlot >= static_cast<int>(skin.joints.size())) {
+    if (jointSlot < 0 || jointSlot >= static_cast<int>(skin.joints.size()))
         return glm::mat4(1.0f);
-    }
     int nodeIndex = skin.joints[jointSlot];
     return animatedGlobals[nodeIndex] * skin.inverseBindMatrices[jointSlot];
 }
@@ -466,9 +485,7 @@ void GltfModel::drawPrimitive(const Primitive& primitive, const Skin* skin)
     glBegin(GL_TRIANGLES);
 
     for (unsigned int index : primitive.indices) {
-        if (index >= primitive.vertices.size()) {
-            continue;
-        }
+        if (index >= primitive.vertices.size()) continue;
         const Vertex& vertex = primitive.vertices[index];
         glm::vec4 skinnedPosition(0.0f);
         glm::vec3 skinnedNormal(0.0f);
@@ -476,9 +493,7 @@ void GltfModel::drawPrimitive(const Primitive& primitive, const Skin* skin)
         if (skin && glm::dot(vertex.weights, glm::vec4(1.0f)) > 0.0f) {
             for (int i = 0; i < 4; ++i) {
                 float weight = vertex.weights[i];
-                if (weight <= 0.0f) {
-                    continue;
-                }
+                if (weight <= 0.0f) continue;
                 glm::mat4 m = skinMatrix(*skin, vertex.joints[i]);
                 skinnedPosition += weight * (m * glm::vec4(vertex.position, 1.0f));
                 skinnedNormal += weight * glm::mat3(m) * vertex.normal;
@@ -488,11 +503,10 @@ void GltfModel::drawPrimitive(const Primitive& primitive, const Skin* skin)
             skinnedNormal = vertex.normal;
         }
 
-        if (glm::length(skinnedNormal) > 1e-6f) {
+        if (glm::length(skinnedNormal) > 1e-6f)
             skinnedNormal = glm::normalize(skinnedNormal);
-        } else {
+        else
             skinnedNormal = glm::vec3(0.0f, 1.0f, 0.0f);
-        }
 
         glNormal3fv(glm::value_ptr(skinnedNormal));
         glVertex3fv(glm::value_ptr(glm::vec3(skinnedPosition)));

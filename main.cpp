@@ -13,6 +13,12 @@
 
 static GLFWwindow* g_window = nullptr;
 
+// q_local_child = inverse(q_world_parent) * q_world_child
+static glm::quat localRelativeTo(const glm::quat& worldParent, const glm::quat& worldChild)
+{
+    return glm::normalize(glm::inverse(worldParent) * worldChild);
+}
+
 int main()
 {
     SensorManager sensorManager;
@@ -49,6 +55,7 @@ int main()
         if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
             renderer.setCameraView(CameraView::SIDE);
 
+        // ── Raw calibrated world‑space quaternions (only used internally) ──
         glm::quat correctedLFA   = sensorManager.getCorrectedLFAQuat();
         glm::quat correctedRFA   = sensorManager.getCorrectedRFAQuat();
         glm::quat correctedLUA   = sensorManager.getCorrectedLUAQuat();
@@ -60,21 +67,40 @@ int main()
         glm::quat correctedHips  = sensorManager.getCorrectedHipsQuat();
         glm::quat correctedChest = sensorManager.getCorrectedChestQuat();
 
-        renderer.render(correctedLFA, correctedRFA, correctedLUA, correctedRUA,
-                        correctedLTH, correctedRTH, correctedLSH, correctedRSH,
-                        correctedHips, correctedChest);
+        // ── Hierarchical (parent‑relative) quaternions ──
+        // Roots (world‑space corrected quats, identity = neutral pose)
+        glm::quat hipsWorld  = correctedHips;
+        glm::quat chestWorld = correctedChest;
 
+        // Lower body
+        glm::quat localLTH = localRelativeTo(hipsWorld, correctedLTH);
+        glm::quat localRTH = localRelativeTo(hipsWorld, correctedRTH);
+        glm::quat localLSH = localRelativeTo(correctedLTH, correctedLSH);   // relative to thigh
+        glm::quat localRSH = localRelativeTo(correctedRTH, correctedRSH);
+
+        // Upper body
+        glm::quat localLUA = localRelativeTo(chestWorld, correctedLUA);
+        glm::quat localRUA = localRelativeTo(chestWorld, correctedRUA);
+        glm::quat localLFA = localRelativeTo(correctedLUA, correctedLFA);   // relative to upper arm
+        glm::quat localRFA = localRelativeTo(correctedRUA, correctedRFA);
+
+        // Render with hierarchical joint rotations
+        renderer.render(localLFA, localRFA, localLUA, localRUA,
+                        localLTH, localRTH, localLSH, localRSH,
+                        chestWorld, hipsWorld);
+
+        // CSV now logs parent‑relative joint quaternions
         std::vector<SensorSample> samples = {
-            { "L_FA",  correctedLFA   },
-            { "R_FA",  correctedRFA   },
-            { "L_UA",  correctedLUA   },
-            { "R_UA",  correctedRUA   },
-            { "L_TH",  correctedLTH   },
-            { "L_SH",  correctedLSH   },
-            { "R_TH",  correctedRTH   },
-            { "R_SH",  correctedRSH   },
-            { "HIPS",  correctedHips  },
-            { "CHEST", correctedChest },
+            { "L_FA",  localLFA },
+            { "R_FA",  localRFA },
+            { "L_UA",  localLUA },
+            { "R_UA",  localRUA },
+            { "L_TH",  localLTH },
+            { "L_SH",  localLSH },
+            { "R_TH",  localRTH },
+            { "R_SH",  localRSH },
+            { "HIPS",  hipsWorld },
+            { "CHEST", chestWorld },
         };
         std::vector<bool> active = {
             sensorManager.isLFAActive(),
