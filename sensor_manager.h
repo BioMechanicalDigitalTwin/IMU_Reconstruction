@@ -89,20 +89,17 @@ private:
     std::atomic<bool> verticalMode;           // false = horizontal, true = vertical
 
     // ── Vertical‑mount axis remap ──────────────────────────────────────────
-    // This table tells which source component goes to which destination,
-    // and with what sign.  Change only these numbers to correct your mount.
     struct AxisMap {
         int src;   // 0=x, 1=y, 2=z, 3=w  (4 = none, always 0)
         float sign;
     };
     static constexpr AxisMap verticalRemap[4] = {
-        {1,  1.0f},  // body.x = sensor.y  (pitch – keep this)
-        {0,  1.0f},  // body.y = sensor.x  (was body.z, now swapped)
-        {2,  1.0f},  // body.z = sensor.z  (was body.y, now swapped)
+        {1,  1.0f},  // body.x = sensor.y
+        {0,  1.0f},  // body.y = sensor.x
+        {2,  1.0f},  // body.z = sensor.z
         {3,  1.0f}   // body.w = sensor.w
     };
     
-    // Helper: apply the remap table to a quaternion
     static glm::quat remapQuat(const glm::quat& q) {
         float comps[4] = {q.x, q.y, q.z, q.w};
         glm::quat result;
@@ -113,7 +110,7 @@ private:
         return glm::normalize(result);
     }
 
-    // ── sensor state (unchanged) ───────────────────────────────────────────
+    // ── sensor state ───────────────────────────────────────────────────────
     mutable std::mutex quatMutex1;
     glm::quat sensorQuatLFA;
     bool activeLFA = false;
@@ -124,6 +121,9 @@ private:
     mutable bool hasSmoothedCorrectedLFA;
     mutable glm::quat lastQLFA;
     mutable float stationaryTimerLFA;
+    // local smoothing state for child (LFA relative to LUA)
+    mutable glm::quat smoothedLocalLFA;
+    mutable bool hasSmoothedLocalLFA;
 
     mutable std::mutex quatMutex2;
     glm::quat sensorQuatRFA;
@@ -135,6 +135,8 @@ private:
     mutable bool hasSmoothedCorrectedRFA;
     mutable glm::quat lastQRFA;
     mutable float stationaryTimerRFA;
+    mutable glm::quat smoothedLocalRFA;
+    mutable bool hasSmoothedLocalRFA;
 
     mutable std::mutex quatMutex3;
     glm::quat sensorQuat3;
@@ -179,6 +181,8 @@ private:
     mutable bool hasSmoothedCorrected6;
     mutable glm::quat lastQ6;
     mutable float stationaryTimer6;
+    mutable glm::quat smoothedLocalLSH;
+    mutable bool hasSmoothedLocalLSH;
 
     mutable std::mutex quatMutex7;
     glm::quat sensorQuat7;
@@ -201,6 +205,8 @@ private:
     mutable bool hasSmoothedCorrected8;
     mutable glm::quat lastQ8;
     mutable float stationaryTimer8;
+    mutable glm::quat smoothedLocalRSH;
+    mutable bool hasSmoothedLocalRSH;
 
     mutable std::mutex quatMutex9;
     glm::quat sensorQuat9;
