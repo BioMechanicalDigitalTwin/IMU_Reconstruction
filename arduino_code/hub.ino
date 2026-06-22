@@ -5,16 +5,13 @@
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps612.h"
 
-// ── Change per hub ──────────────────────────
-const char* SELF_LABEL = "HIPS";                // "HIPS" for Waist
+const char* SELF_LABEL = "HIPS";
 const char* ssid       = "TP-Link_DF6C_Cave";
 const char* password   = "Caveiot@123";
-// ─────────────────────────────────────────────
 
 const char*  multicast_ip = "239.0.0.1";
 const unsigned int port   = 5005;
 
-// ── LED pins (active‑low) ────────────────────
 const int LED_RED   = 1;
 const int LED_GREEN = 0;
 
@@ -22,7 +19,6 @@ WiFiUDP udp;
 MPU6050 mpu;
 uint8_t fifoBuffer[64];
 
-// ── ESP‑Now packet format ────────────────────
 #pragma pack(1)
 struct SensorData {
   char label[8];
@@ -30,19 +26,22 @@ struct SensorData {
 };
 #pragma pack()
 
-// ── Simple ring‑buffer queue (max 8 pending) ──
-volatile int pendingCount = 0;
-SensorData pending[8];
+static SensorData bufA[8], bufB[8];
+static volatile SensorData* writeBuf = bufA;
+static SensorData* readBuf = bufB;
+static volatile int writeCount = 0;
+portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
-// Called from ESP‑Now interrupt – just store
 void onEspNowReceive(const esp_now_recv_info *info, const uint8_t *incomingData, int len) {
   if (len != sizeof(SensorData)) return;
-  if (pendingCount >= 8) return;                      // drop if queue full
-  memcpy((void*)&pending[pendingCount], incomingData, sizeof(SensorData));
-  pendingCount++;
+  portENTER_CRITICAL_ISR(&mux);
+  if (writeCount < 8) {
+    memcpy((void*)&writeBuf[writeCount], incomingData, sizeof(SensorData));
+    writeCount++;
+  }
+  portEXIT_CRITICAL_ISR(&mux);
 }
 
-// ── Safe UDP sender (called only from loop) ──
 void forwardPacket(const char* label, float qw, float qx, float qy, float qz) {
   char payload[64];
   snprintf(payload, sizeof(payload), "%s,%.4f,%.4f,%.4f,%.4f", label, qw, qx, qy, qz);
@@ -51,7 +50,6 @@ void forwardPacket(const char* label, float qw, float qx, float qy, float qz) {
   udp.endPacket();
 }
 
-// ── WiFi reconnect helper ────────────────────
 void connectWiFi() {
   WiFi.begin(ssid, password);
   unsigned long start = millis();
@@ -62,8 +60,18 @@ void connectWiFi() {
   }
 }
 
+void broadcastChannel() {
+  // Blink green N times = WiFi channel number, so you know without serial
+  uint8_t ch = WiFi.channel();
+  delay(1000);
+  for (uint8_t i = 0; i < ch; i++) {
+    digitalWrite(LED_GREEN, LOW);  delay(200);
+    digitalWrite(LED_GREEN, HIGH); delay(200);
+  }
+  delay(1000);
+}
+
 void setup() {
-  Serial.begin(115200);
   Wire.begin(8, 9);
 
   pinMode(LED_RED,   OUTPUT);
@@ -71,7 +79,6 @@ void setup() {
   digitalWrite(LED_RED,   HIGH);
   digitalWrite(LED_GREEN, HIGH);
 
-  // Power‑on blink (5.5 s alternating R/G)
   for (int i = 0; i < 11; i++) {
     digitalWrite(LED_RED,   (i % 2) ? HIGH : LOW);
     digitalWrite(LED_GREEN, (i % 2) ? LOW  : HIGH);
@@ -86,11 +93,12 @@ void setup() {
 
   connectWiFi();
 
-  // WiFi OK → green 2 s
   if (WiFi.status() == WL_CONNECTED) {
     digitalWrite(LED_GREEN, LOW);
     delay(2000);
     digitalWrite(LED_GREEN, HIGH);
+    // Blink green to show channel — count the blinks
+    broadcastChannel();
   }
 
   if (mpu.dmpInitialize() == 0) {
@@ -116,44 +124,45 @@ void loop() {
 
   unsigned long now = millis();
 
-  // ── WiFi reconnect watchdog ──────────────
   if (WiFi.status() != WL_CONNECTED) {
     digitalWrite(LED_GREEN, HIGH);
     connectWiFi();
     return;
   }
 
-  // ── Red heartbeat (150 ms every 1 s) ─────
   if (!hbOn && now - lastHB >= 1000) {
     digitalWrite(LED_RED, LOW);
-    hbOn = true;
-    hbStart = now;
-    lastHB = now;
+    hbOn = true; hbStart = now; lastHB = now;
   }
   if (hbOn && now - hbStart >= 150) {
     digitalWrite(LED_RED, HIGH);
     hbOn = false;
   }
 
-  // ── Forward any pending limb data ─────────
-  int count = pendingCount;
-  pendingCount = 0;
-  for (int i = 0; i < count; i++) {
-      forwardPacket(pending[i].label, pending[i].qw, pending[i].qx, pending[i].qy, pending[i].qz);
-  }
-
-  // ── Read & send own sensor (~66 Hz) ──────
+  // Own MPU first to avoid FIFO overflow
   if (now - lastOwnSend >= 15) {
     if (mpu.getFIFOCount() >= 1024) {
       mpu.resetFIFO();
-      return;
-    }
-    if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+    } else if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
       lastOwnSend = now;
       Quaternion q;
       mpu.dmpGetQuaternion(&q, fifoBuffer);
       forwardPacket(SELF_LABEL, q.w, q.x, q.y, q.z);
     }
+  }
+
+  // Swap buffers atomically
+  int count = 0;
+  portENTER_CRITICAL(&mux);
+  count = writeCount;
+  writeCount = 0;
+  volatile SensorData* tmp = writeBuf;
+  writeBuf = (volatile SensorData*)readBuf;
+  readBuf = (SensorData*)tmp;
+  portEXIT_CRITICAL(&mux);
+
+  for (int i = 0; i < count; i++) {
+    forwardPacket(readBuf[i].label, readBuf[i].qw, readBuf[i].qx, readBuf[i].qy, readBuf[i].qz);
   }
 
   delay(1);
