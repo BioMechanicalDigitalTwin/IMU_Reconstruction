@@ -105,7 +105,7 @@ private:
                         const glm::quat& hipsWorld);
 
     void applyWorldRotation(const BoneTarget& target, const glm::quat& worldRotation);
-    void applyWorldDirection(const BoneTarget& target, const glm::vec3& worldDirection);
+    void applyWorldDirection(const BoneTarget& target, const glm::vec3& worldDirection, float twistDegrees = 0.0f);
     void prepareBoneTarget(BoneTarget& target, const char* nodeName, const char* childName);
     int findNode(const std::string& name) const;
     glm::vec3 nodeWorldPosition(int nodeIndex) const;
