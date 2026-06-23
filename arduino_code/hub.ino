@@ -1,11 +1,12 @@
 #include <esp_now.h>
+#include <esp_wifi.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <Wire.h>
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps612.h"
 
-const char* SELF_LABEL = "HIPS";
+const char* SELF_LABEL = "CHEST";
 const char* ssid       = "TP-Link_DF6C_Cave";
 const char* password   = "Caveiot@123";
 
@@ -24,6 +25,13 @@ struct SensorData {
   char label[8];
   float qw, qx, qy, qz;
 };
+struct ProbePacket {
+  char magic[4];   // "WHO?"
+};
+struct ProbeReply {
+  char magic[4];   // "HERE"
+  uint8_t channel;
+};
 #pragma pack()
 
 static SensorData bufA[8], bufB[8];
@@ -32,14 +40,41 @@ static SensorData* readBuf = bufB;
 static volatile int writeCount = 0;
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
+uint8_t realChannel = 1;
+
+// ---- ESP-NOW receive: demux by packet size ----
+// SensorData (24 bytes) -> push into ring buffer, forwarded over UDP in loop()
+// ProbePacket (4 bytes) -> a sensor is hunting for our channel, reply directly
 void onEspNowReceive(const esp_now_recv_info *info, const uint8_t *incomingData, int len) {
-  if (len != sizeof(SensorData)) return;
-  portENTER_CRITICAL_ISR(&mux);
-  if (writeCount < 8) {
-    memcpy((void*)&writeBuf[writeCount], incomingData, sizeof(SensorData));
-    writeCount++;
+  if (len == sizeof(SensorData)) {
+    portENTER_CRITICAL_ISR(&mux);
+    if (writeCount < 8) {
+      memcpy((void*)&writeBuf[writeCount], incomingData, sizeof(SensorData));
+      writeCount++;
+    }
+    portEXIT_CRITICAL_ISR(&mux);
+    return;
   }
-  portEXIT_CRITICAL_ISR(&mux);
+
+  if (len == sizeof(ProbePacket)) {
+    ProbePacket probe;
+    memcpy(&probe, incomingData, sizeof(probe));
+    if (memcmp(probe.magic, "WHO?", 4) != 0) return;
+
+    // Reply directly to whoever asked. Their MAC must be a registered peer
+    // before we can esp_now_send to it — add transiently, send, remove.
+    esp_now_peer_info_t replyPeer = {};
+    memcpy(replyPeer.peer_addr, info->src_addr, 6);
+    replyPeer.channel = realChannel;
+    replyPeer.encrypt = false;
+    if (esp_now_add_peer(&replyPeer) == ESP_OK) {
+      ProbeReply reply;
+      memcpy(reply.magic, "HERE", 4);
+      reply.channel = realChannel;
+      esp_now_send(info->src_addr, (uint8_t*)&reply, sizeof(reply));
+      esp_now_del_peer(info->src_addr);
+    }
+  }
 }
 
 void forwardPacket(const char* label, float qw, float qx, float qy, float qz) {
@@ -60,20 +95,8 @@ void connectWiFi() {
   }
 }
 
-void broadcastChannel() {
-  // Blink green N times = WiFi channel number, so you know without serial
-  uint8_t ch = WiFi.channel();
-  delay(1000);
-  for (uint8_t i = 0; i < ch; i++) {
-    digitalWrite(LED_GREEN, LOW);  delay(200);
-    digitalWrite(LED_GREEN, HIGH); delay(200);
-  }
-  delay(1000);
-}
-
 void setup() {
   Wire.begin(8, 9);
-
   pinMode(LED_RED,   OUTPUT);
   pinMode(LED_GREEN, OUTPUT);
   digitalWrite(LED_RED,   HIGH);
@@ -94,11 +117,10 @@ void setup() {
   connectWiFi();
 
   if (WiFi.status() == WL_CONNECTED) {
+    realChannel = WiFi.channel();
     digitalWrite(LED_GREEN, LOW);
     delay(2000);
     digitalWrite(LED_GREEN, HIGH);
-    // Blink green to show channel — count the blinks
-    broadcastChannel();
   }
 
   if (mpu.dmpInitialize() == 0) {
@@ -119,6 +141,7 @@ void setup() {
 void loop() {
   static unsigned long lastOwnSend = 0;
   static unsigned long lastHB = 0;
+  static unsigned long lastChannelRefresh = 0;
   static bool hbOn = false;
   static unsigned long hbStart = 0;
 
@@ -127,7 +150,18 @@ void loop() {
   if (WiFi.status() != WL_CONNECTED) {
     digitalWrite(LED_GREEN, HIGH);
     connectWiFi();
+    realChannel = WiFi.channel();
     return;
+  }
+
+  // Some enterprise APs shift channel without a full disconnect (802.11h).
+  // Re-read periodically so a silent channel move doesn't go unnoticed —
+  // if it does change mid-run, sensors will simply re-discover on their
+  // own retry sweep since their ProbeReply will start carrying the new
+  // value immediately.
+  if (now - lastChannelRefresh >= 5000) {
+    lastChannelRefresh = now;
+    realChannel = WiFi.channel();
   }
 
   if (!hbOn && now - lastHB >= 1000) {
@@ -151,7 +185,7 @@ void loop() {
     }
   }
 
-  // Swap buffers atomically
+  // Swap buffers atomically, forward whatever sensors sent this tick
   int count = 0;
   portENTER_CRITICAL(&mux);
   count = writeCount;
