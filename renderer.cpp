@@ -59,7 +59,8 @@ void Renderer::render(
     const glm::quat& leftShinLocal,
     const glm::quat& rightShinLocal,
     const glm::quat& chestWorld,
-    const glm::quat& hipsWorld)
+    const glm::quat& hipsWorld,
+    bool placementGuideMode)
 {
     glClearColor(0.07f, 0.07f, 0.12f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -92,7 +93,8 @@ void Renderer::render(
         leftUpperArmLocal, rightUpperArmLocal,
         leftThighLocal, rightThighLocal,
         leftShinLocal, rightShinLocal,
-        chestWorld, hipsWorld
+        chestWorld, hipsWorld,
+        placementGuideMode
     );
 
     drawWorldAxes();
@@ -104,6 +106,10 @@ void Renderer::render(
         leftShinLocal, rightShinLocal,
         chestWorld, hipsWorld
     );
+
+    if (placementGuideMode) {
+        drawPlacementGuideOverlay();
+    }
 }
 
 void Renderer::drawWorldAxes()
@@ -228,4 +234,52 @@ void Renderer::drawHudAxisWidget(float cx, float cy,
     glEnd();
     glLineWidth(1.0f);
     glPointSize(1.0f);
+}
+
+void Renderer::drawPlacementGuideOverlay()
+{
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0.0, WINDOW_WIDTH, 0.0, WINDOW_HEIGHT, -1.0, 1.0);
+
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+
+    const float left = 24.0f;
+    const float top  = (float)WINDOW_HEIGHT - 40.0f;
+
+    glColor4f(0.0f, 0.0f, 0.0f, 0.45f);
+    glBegin(GL_QUADS);
+    glVertex2f(left - 12.0f, top + 24.0f);
+    glVertex2f(left + 380.0f, top + 24.0f);
+    glVertex2f(left + 380.0f, top - 132.0f);
+    glVertex2f(left - 12.0f, top - 132.0f);
+    glEnd();
+
+    auto drawLine = [&](float py, const char* text, float r, float g, float b) {
+        glColor3f(r, g, b);
+        glRasterPos2f(left, py);
+        for (const char* c = text; *c; ++c)
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+    };
+
+    drawLine(top,         "SENSOR PLACEMENT RULES",                   0.55f, 1.0f, 0.6f);
+    drawLine(top - 24.0f, "- Mount every sensor vertically",          0.9f,  0.9f, 0.92f);
+    drawLine(top - 44.0f, "- LED must point upward (toward the head)", 0.9f, 0.9f, 0.92f);
+    drawLine(top - 64.0f, "- Sensor must be centered on the marker",  0.9f,  0.9f, 0.92f);
+    drawLine(top - 84.0f, "- Do not rotate the sensor around the limb", 0.9f, 0.9f, 0.92f);
+    drawLine(top - 104.0f,"- Match sensor labels exactly",            0.9f,  0.9f, 0.92f);
+
+    glEnable(GL_LIGHTING);
+    glEnable(GL_DEPTH_TEST);
+
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
 }

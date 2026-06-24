@@ -14,7 +14,8 @@ public:
                 const glm::quat& leftUpperArmQ, const glm::quat& rightUpperArmQ,
                 const glm::quat& leftThighQ,    const glm::quat& rightThighQ,
                 const glm::quat& leftShinQ,     const glm::quat& rightShinQ,
-                const glm::quat& hipsQ,         const glm::quat& chestQ);
+                const glm::quat& hipsQ,         const glm::quat& chestQ,
+                bool placementGuideMode);
     void setCameraView(CameraView view) { cameraView = view; }
     void cycleCameraView();
 
@@ -36,6 +37,7 @@ private:
     void drawHudAxisWidget(float cx, float cy,
                            const glm::quat& q,
                            float scale);
+    void drawPlacementGuideOverlay();
 
     const int WINDOW_WIDTH  = 1400;
     const int WINDOW_HEIGHT = 900;

@@ -13,6 +13,7 @@ SensorManager::SensorManager()
     , sensorQuat9(1,0,0,0),   sensorQuat10(1,0,0,0)
     , quaternionConvention(0)
     , verticalMode(false)
+    , placementGuideMode(false)
     , calibrationReferenceLFA(1,0,0,0), smoothedCorrectedLFA(1,0,0,0)
     , hasSmoothedCorrectedLFA(false),   lastQLFA(1,0,0,0), stationaryTimerLFA(0)
     , smoothedLocalLFA(1,0,0,0), hasSmoothedLocalLFA(false)
@@ -220,6 +221,17 @@ void SensorManager::toggleVerticalOffset()
     int displayMode = getQuaternionMode();
     std::cout << "Switched to " << (verticalMode.load() ? "vertical" : "horizontal")
               << " mount. Current mode " << displayMode << "/8. Recalibrate.\n";
+}
+
+void SensorManager::togglePlacementGuideMode()
+{
+    placementGuideMode.store(!placementGuideMode.load());
+    std::cout << "Placement guide " << (placementGuideMode.load() ? "ON" : "OFF") << "\n";
+}
+
+bool SensorManager::isPlacementGuideMode() const
+{
+    return placementGuideMode.load();
 }
 
 int SensorManager::getQuaternionMode() const

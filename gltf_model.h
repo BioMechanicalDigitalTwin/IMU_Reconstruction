@@ -7,6 +7,11 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+struct SensorMarker {
+    std::string label;
+    glm::vec3 worldPos;
+};
+
 class GltfModel{
 public:
     bool load(const std::string& path);
@@ -21,7 +26,8 @@ public:
               const glm::quat& leftShinLocal,
               const glm::quat& rightShinLocal,
               const glm::quat& chestWorld,
-              const glm::quat& hipsWorld);
+              const glm::quat& hipsWorld,
+              bool placementGuideMode = false);
 
 private:
     struct Vertex {
@@ -86,6 +92,15 @@ private:
     BoneTarget hips;
     BoneTarget chest;
 
+    // Optional twist-helper bones (present in some Mixamo exports).
+    // -1 if the GLB does not contain them.
+    int leftForeArmTwist  = -1;
+    int rightForeArmTwist = -1;
+
+    bool torsoNeutralCaptured = false;
+    glm::quat hipsNeutralSensor  = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    glm::quat chestNeutralSensor = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+
     void updateTorsoBones(const glm::quat& hipsWorld, const glm::quat& chestWorld);
 
     glm::mat4 composeLocal(const Node& node, const glm::quat& localRotation) const;
@@ -104,6 +119,7 @@ private:
                         const glm::quat& rightShinLocal,
                         const glm::quat& hipsWorld);
 
+    glm::quat bindWorldRotation(int nodeIndex) const;
     void applyWorldRotation(const BoneTarget& target, const glm::quat& worldRotation);
     void applyWorldDirection(const BoneTarget& target, const glm::vec3& worldDirection);
     void prepareBoneTarget(BoneTarget& target, const char* nodeName, const char* childName);
@@ -113,4 +129,33 @@ private:
     glm::quat rotationBetween(glm::vec3 from, glm::vec3 to) const;
     glm::mat4 skinMatrix(const Skin& skin, int jointSlot) const;
     void drawPrimitive(const Primitive& primitive, const Skin* skin);
-};
+
+    static constexpr float kChestFrontFrac    = 0.55f;
+    static constexpr float kChestDownFrac     = 0.12f;
+    static constexpr float kHipsFrontFrac     = 0.55f;
+    static constexpr float kHipsDownFrac      = 0.10f;
+    static constexpr float kUALateralFrac     = 0.45f;
+    static constexpr float kFAFrac            = 0.45f;
+    static constexpr float kTHFrac            = 0.45f;
+    static constexpr float kSHFrac            = 0.45f;
+    static constexpr float kMarkerRadiusFrac  = 0.09f;
+    static constexpr float kOrientationLineFrac = 0.22f;
+    // Fraction of forearm axial twist propagated to the twist-helper bone.
+    // 0.5 = half twist (standard anatomical split), 0 = disable.
+    static constexpr float kTwistFrac = 0.5f;
+
+    std::vector<SensorMarker> sensorMarkers;
+    float markerRadius = 0.08f;
+    glm::vec3 markerUpDir = glm::vec3(0.0f, 1.0f, 0.0f);
+    float orientationLineLength = 0.05f;
+
+    glm::vec3 animatedWorldPosition(int nodeIndex) const;
+    void updateSensorMarkers();
+    void drawSensorMarkers();
+
+    bool findJointSlot(int nodeIndex, int& skinIndexOut, int& jointSlotOut) const;
+    glm::vec3 skinnedVertexWorldPosition(const Vertex& vertex, const Skin& skin) const;
+    glm::vec3 findArmSurfaceMarker(int jointNode, int childNode,
+                                   const glm::vec3& jointPos, const glm::vec3& childPos,
+                                   const glm::vec3& desiredDir, float fallbackFrac) const;
+};  
