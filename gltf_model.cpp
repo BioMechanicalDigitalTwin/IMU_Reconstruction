@@ -12,7 +12,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-static glm::quat invertYaw(const glm::quat& q);
 static glm::quat yawOnly(const glm::quat& q);
 
 namespace {
@@ -568,14 +567,6 @@ void GltfModel::updateLegBones(const glm::quat& leftThighLocal,
     computeGlobals();
 }
 
-static glm::quat invertYaw(const glm::quat& q)
-{
-    // Sensor AHRS yaw convention is opposite-handed to render world Y-up.
-    // Negating the quaternion's y-component flips yaw sense only —
-    // pitch and roll (x, z components) are untouched.
-    return glm::quat(q.w, q.x, -q.y, q.z);
-}
-
 static glm::quat yawOnly(const glm::quat& q)
 {
     glm::vec3 axis(q.x, q.y, q.z);
@@ -585,26 +576,6 @@ static glm::quat yawOnly(const glm::quat& q)
 
 void GltfModel::updateTorsoBones(const glm::quat& hipsWorld, const glm::quat& chestWorld)
 {
-    // Full quaternion-driven torso.
-    //
-    // 1) Neutral capture: don't assume the sensor reads identity at rest.
-    //    Accel/gyro-only IMU correction zeroes pitch/roll against gravity but
-    //    leaves an arbitrary residual yaw at rest — invisible to the old
-    //    direction-vector code (pure yaw doesn't move "up"), but fatal once
-    //    the full quaternion drives the bone directly. Capture the live
-    //    reading once and drive off the delta from that baseline instead of
-    //    off the raw quaternion.
-    //
-    // 2) Yaw handedness: the sensor's AHRS yaw convention is opposite-handed
-    //    to render world Y-up, so the raw delta's yaw sense is inverted
-    //    before use. Pitch/roll are unaffected by this correction.
-    //
-    // 3) target.alignment holds each bone's bind-pose world rotation
-    //    (cached once in load()). Composing the corrected delta onto it
-    //    gives the bone's exact desired world orientation:
-    //        B(t) = invertYaw(S(t) * inverse(S(neutral))) * bindWorldRotation(node)
-    //    At S(t) == S(neutral) this reduces to bindWorldRotation(node)
-    //    exactly, reproducing the rest pose.
     if (!torsoNeutralCaptured) {
         hipsNeutralSensor    = hipsWorld;
         chestNeutralSensor   = chestWorld;
