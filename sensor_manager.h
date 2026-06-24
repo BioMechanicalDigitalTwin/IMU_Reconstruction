@@ -26,7 +26,9 @@ public:
     void calibrateRUA();
     void toggleQuaternionConvention();
     void toggleVerticalOffset();
+    void togglePlacementGuideMode();
     int  getQuaternionMode() const;
+    bool isPlacementGuideMode() const;
     
     glm::quat getCorrectedLFAQuat() const;
     glm::quat getCorrectedRFAQuat() const;
@@ -88,6 +90,7 @@ private:
 
     std::atomic<int>  quaternionConvention;
     std::atomic<bool> verticalMode;
+    std::atomic<bool> placementGuideMode;
 
     struct AxisMap {
         int src;

@@ -27,6 +27,9 @@ void InputHandler::handleKey(int key)
     } else if (key == GLFW_KEY_P) {                           // ← NEW
         sensorManager.toggleVerticalOffset();
         csvLogger.markCalibration("VERTICAL_TOGGLE");
+    } else if (key == GLFW_KEY_L) {
+        sensorManager.togglePlacementGuideMode();
+        csvLogger.markCalibration(sensorManager.isPlacementGuideMode() ? "PLACEMENT_GUIDE_ON" : "PLACEMENT_GUIDE_OFF");
     } else if (key == GLFW_KEY_Z) {
         sensorManager.calibrateLTH();
         csvLogger.markCalibration("L_TH");

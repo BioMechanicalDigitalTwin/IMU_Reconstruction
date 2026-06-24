@@ -8,6 +8,7 @@
 #include <iostream>
 #include <unordered_map>
 
+#include <GL/glut.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -243,6 +244,18 @@ bool GltfModel::load(const std::string& path)
     prepareBoneTarget(hips,  "mixamorig:Hips",   "mixamorig:Spine");
     prepareBoneTarget(chest, "mixamorig:Spine2",  "mixamorig:Neck");
 
+    // Bind-pose world rotation for each torso root — see updateTorsoBones().
+    if (hips.valid)  hips.alignment  = bindWorldRotation(hips.node);
+    if (chest.valid) chest.alignment = bindWorldRotation(chest.node);
+
+    // Optional twist-helper bones present in some Mixamo exports.
+    // If absent, findNode returns -1 and the twist code paths are skipped.
+    leftForeArmTwist  = findNode("mixamorig:LeftForeArmTwist");
+    rightForeArmTwist = findNode("mixamorig:RightForeArmTwist");
+
+    if (leftForeArmTwist  >= 0) std::cout << "Twist helper found: LeftForeArmTwist\n";
+    if (rightForeArmTwist >= 0) std::cout << "Twist helper found: RightForeArmTwist\n";
+
     loaded = !meshes.empty();
     cgltf_free(data);
 
@@ -286,24 +299,21 @@ void GltfModel::draw(const glm::quat& leftForearmLocal,
                      const glm::quat& leftShinLocal,
                      const glm::quat& rightShinLocal,
                      const glm::quat& chestWorld,
-                     const glm::quat& hipsWorld)
+                     const glm::quat& hipsWorld,
+                     bool placementGuideMode)
 {
     if (!loaded) return;
 
-    // Reset entire skeleton to bind pose once per frame
     for (size_t i = 0; i < nodes.size(); ++i)
         animatedLocalRotations[i] = nodes[i].rotation;
     computeGlobals();
 
-    // Torso first: sets Hips and Chest bones (world‑space)
     updateTorsoBones(hipsWorld, chestWorld);
 
-    // Arms: chest as root
     updateArmBones(leftForearmLocal, rightForearmLocal,
                    leftUpperArmLocal, rightUpperArmLocal,
                    chestWorld);
 
-    // Legs: hips as root
     updateLegBones(leftThighLocal, rightThighLocal,
                    leftShinLocal, rightShinLocal, hipsWorld);
 
@@ -320,8 +330,45 @@ void GltfModel::draw(const glm::quat& leftForearmLocal,
         }
     }
 
+    if (placementGuideMode) {
+        updateSensorMarkers();
+        drawSensorMarkers();
+    }
+
     glPopMatrix();
 }
+
+// ---------------------------------------------------------------------------
+// Full-quaternion bone update helpers (Phase 2)
+//
+// The previous implementation used applyWorldDirection(), which collapses
+// the full sensor quaternion into a single direction vector and then finds the
+// minimal-arc (swing-only) rotation that points the bone along that vector.
+// Axial rotation (pronation/supination, internal/external shoulder rotation,
+// leg/shin twist) was therefore always zero — the direction vector carries no
+// information about rotation around the bone's own longitudinal axis.
+//
+// applyWorldRotation() already existed and is correct:
+//     q_local = inv(q_W_parent) * q_W_bone
+// All we do here is call it instead of applyWorldDirection(), using the full
+// world-space quaternion that was already being computed.
+//
+// Twist bone support: some Mixamo exports split forearm/thigh twist into a
+// separate child bone (LeftForeArmTwist, RightForeArmTwist, etc.).  When those
+// nodes are found at load time they are driven at kTwistFrac of the parent's
+// axial twist each frame.  If the nodes are absent the code is a no-op.
+// ---------------------------------------------------------------------------
+
+// Decompose q_W_bone into swing × twist around boneAxis (world space).
+// Returns just the twist component as a quaternion.
+static glm::quat extractTwist(const glm::quat& q, const glm::vec3& boneAxis)
+{
+    glm::vec3 ra(q.x, q.y, q.z);          // vector part
+    glm::vec3 proj = glm::dot(ra, boneAxis) * boneAxis;
+    glm::quat twist = glm::normalize(glm::quat(q.w, proj.x, proj.y, proj.z));
+    return twist;
+}
+
 
 void GltfModel::updateArmBones(const glm::quat& leftForearmLocal,
                                const glm::quat& rightForearmLocal,
@@ -329,26 +376,118 @@ void GltfModel::updateArmBones(const glm::quat& leftForearmLocal,
                                const glm::quat& rightUpperArmLocal,
                                const glm::quat& chestWorldQ)
 {
-    // Global matrices must be up‑to‑date before we read parent world rotations
+    // Strategy: use applyWorldDirection for swing (proven stable, correct rest pose),
+    // then correct the axial (longitudinal) twist using applyWorldRotation.
+    //
+    // applyWorldDirection(bone, sensorQuat * restDir) gives perfect swing for any
+    // motion and naturally produces arms-down rest pose with restDir = (0,-1,0).
+    // It loses only the axial roll, which we restore in a second pass.
+    //
+    // Axial correction pass:
+    //   After the swing is set, compute what world rotation the bone now has,
+    //   then find what the sensor WANTS the world rotation to be
+    //   (sensorDelta * bindWorldRot), extract just the axial difference, and
+    //   apply it as an additional local rotation around the bone axis.
+
     computeGlobals();
 
-    // Upper arms = chestWorld * localArm
+    // ── Left upper arm ─────────────────────────────────────────────────────────
     glm::quat lUAWorld = glm::normalize(chestWorldQ * leftUpperArmLocal);
-    applyWorldDirection(leftArm, lUAWorld * glm::vec3(0.0f, -1.0f, -0.2f));
+
+    // Step 1: swing — point the bone in the sensor direction, arms hang at rest
+    applyWorldDirection(leftArm, lUAWorld * glm::vec3(0.0f, -1.0f, 0.0f));
     computeGlobals();
 
+    // Step 2: axial twist correction
+    {
+        glm::quat swingWorld  = nodeWorldRotation(leftArm.node);
+        glm::quat targetWorld = glm::normalize(leftUpperArmLocal * bindWorldRotation(leftArm.node));
+        // Twist axis = bone's current longitudinal axis (pointing down after swing)
+        glm::vec3 boneAxis    = glm::normalize(swingWorld * glm::vec3(0.0f, -1.0f, 0.0f));
+        glm::quat axisDiff    = glm::normalize(glm::inverse(swingWorld) * targetWorld);
+        glm::quat twistOnly   = extractTwist(axisDiff, glm::vec3(0.0f, -1.0f, 0.0f));
+        animatedLocalRotations[leftArm.node] =
+            glm::normalize(animatedLocalRotations[leftArm.node] * twistOnly);
+        (void)boneAxis;
+    }
+    computeGlobals();
+
+    // ── Right upper arm ────────────────────────────────────────────────────────
     glm::quat rUAWorld = glm::normalize(chestWorldQ * rightUpperArmLocal);
-    applyWorldDirection(rightArm, rUAWorld * glm::vec3(0.0f, -1.0f, -0.2f));
+
+    applyWorldDirection(rightArm, rUAWorld * glm::vec3(0.0f, -1.0f, 0.0f));
     computeGlobals();
 
-    // Forearms = upper arm world * local forearm
+    {
+        glm::quat swingWorld  = nodeWorldRotation(rightArm.node);
+        glm::quat targetWorld = glm::normalize(rightUpperArmLocal * bindWorldRotation(rightArm.node));
+        glm::quat axisDiff    = glm::normalize(glm::inverse(swingWorld) * targetWorld);
+        glm::quat twistOnly   = extractTwist(axisDiff, glm::vec3(0.0f, -1.0f, 0.0f));
+        animatedLocalRotations[rightArm.node] =
+            glm::normalize(animatedLocalRotations[rightArm.node] * twistOnly);
+    }
+    computeGlobals();
+
+    // ── Left forearm ───────────────────────────────────────────────────────────
     glm::quat lFAWorld = glm::normalize(lUAWorld * leftForearmLocal);
-    applyWorldDirection(leftForeArm, lFAWorld * glm::vec3(0.0f, -1.0f, -0.2f));
+
+    applyWorldDirection(leftForeArm, lFAWorld * glm::vec3(0.0f, -1.0f, 0.0f));
     computeGlobals();
 
-    glm::quat rFAWorld = glm::normalize(rUAWorld * rightForearmLocal);
-    applyWorldDirection(rightForeArm, rFAWorld * glm::vec3(0.0f, -1.0f, -0.2f));
+    {
+        glm::quat swingWorld  = nodeWorldRotation(leftForeArm.node);
+        glm::quat targetWorld = glm::normalize(leftForearmLocal * bindWorldRotation(leftForeArm.node));
+        glm::quat axisDiff    = glm::normalize(glm::inverse(swingWorld) * targetWorld);
+        glm::quat twistOnly   = extractTwist(axisDiff, glm::vec3(0.0f, -1.0f, 0.0f));
+        animatedLocalRotations[leftForeArm.node] =
+            glm::normalize(animatedLocalRotations[leftForeArm.node] * twistOnly);
+    }
     computeGlobals();
+
+    // Optional forearm twist helper bone
+    if (leftForeArmTwist >= 0) {
+        glm::quat lFACurrent = nodeWorldRotation(leftForeArm.node);
+        glm::vec3 faBoneAxis = glm::normalize(lFACurrent * glm::vec3(0.0f, -1.0f, 0.0f));
+        glm::quat twist      = extractTwist(lFACurrent, faBoneAxis);
+        glm::quat twistLocal = glm::normalize(glm::inverse(nodeWorldRotation(leftArm.node)) * twist);
+        float halfAngle = std::acos(glm::clamp(twistLocal.w, -1.0f, 1.0f));
+        glm::vec3 axis(twistLocal.x, twistLocal.y, twistLocal.z);
+        float axisLen = glm::length(axis);
+        if (axisLen > 1e-6f)
+            animatedLocalRotations[leftForeArmTwist] =
+                glm::angleAxis(halfAngle * 2.0f * kTwistFrac, axis / axisLen);
+        computeGlobals();
+    }
+
+    // ── Right forearm ──────────────────────────────────────────────────────────
+    glm::quat rFAWorld = glm::normalize(rUAWorld * rightForearmLocal);
+
+    applyWorldDirection(rightForeArm, rFAWorld * glm::vec3(0.0f, -1.0f, 0.0f));
+    computeGlobals();
+
+    {
+        glm::quat swingWorld  = nodeWorldRotation(rightForeArm.node);
+        glm::quat targetWorld = glm::normalize(rightForearmLocal * bindWorldRotation(rightForeArm.node));
+        glm::quat axisDiff    = glm::normalize(glm::inverse(swingWorld) * targetWorld);
+        glm::quat twistOnly   = extractTwist(axisDiff, glm::vec3(0.0f, -1.0f, 0.0f));
+        animatedLocalRotations[rightForeArm.node] =
+            glm::normalize(animatedLocalRotations[rightForeArm.node] * twistOnly);
+    }
+    computeGlobals();
+
+    if (rightForeArmTwist >= 0) {
+        glm::quat rFACurrent = nodeWorldRotation(rightForeArm.node);
+        glm::vec3 faBoneAxis = glm::normalize(rFACurrent * glm::vec3(0.0f, -1.0f, 0.0f));
+        glm::quat twist      = extractTwist(rFACurrent, faBoneAxis);
+        glm::quat twistLocal = glm::normalize(glm::inverse(nodeWorldRotation(rightArm.node)) * twist);
+        float halfAngle = std::acos(glm::clamp(twistLocal.w, -1.0f, 1.0f));
+        glm::vec3 axis(twistLocal.x, twistLocal.y, twistLocal.z);
+        float axisLen = glm::length(axis);
+        if (axisLen > 1e-6f)
+            animatedLocalRotations[rightForeArmTwist] =
+                glm::angleAxis(halfAngle * 2.0f * kTwistFrac, axis / axisLen);
+        computeGlobals();
+    }
 }
 
 void GltfModel::updateLegBones(const glm::quat& leftThighLocal,
@@ -357,34 +496,135 @@ void GltfModel::updateLegBones(const glm::quat& leftThighLocal,
                                 const glm::quat& rightShinLocal,
                                 const glm::quat& hipsWorld)
 {
-    // Hips is already set; compute globals to get its world rotation
+    // Same two-pass strategy as arms: swing via applyWorldDirection (stable rest
+    // pose, correct limb direction), then axial twist correction pass.
     computeGlobals();
 
-    // Thighs
+    // ── Left thigh ─────────────────────────────────────────────────────────────
     glm::quat lTHWorld = glm::normalize(hipsWorld * leftThighLocal);
+
     applyWorldDirection(leftThigh, lTHWorld * glm::vec3(0.0f, -1.0f, 0.0f));
     computeGlobals();
 
+    {
+        glm::quat swingWorld  = nodeWorldRotation(leftThigh.node);
+        glm::quat targetWorld = glm::normalize(leftThighLocal * bindWorldRotation(leftThigh.node));
+        glm::quat axisDiff    = glm::normalize(glm::inverse(swingWorld) * targetWorld);
+        glm::quat twistOnly   = extractTwist(axisDiff, glm::vec3(0.0f, -1.0f, 0.0f));
+        animatedLocalRotations[leftThigh.node] =
+            glm::normalize(animatedLocalRotations[leftThigh.node] * twistOnly);
+    }
+    computeGlobals();
+
+    // ── Right thigh ────────────────────────────────────────────────────────────
     glm::quat rTHWorld = glm::normalize(hipsWorld * rightThighLocal);
+
     applyWorldDirection(rightThigh, rTHWorld * glm::vec3(0.0f, -1.0f, 0.0f));
     computeGlobals();
 
-    // Shins
+    {
+        glm::quat swingWorld  = nodeWorldRotation(rightThigh.node);
+        glm::quat targetWorld = glm::normalize(rightThighLocal * bindWorldRotation(rightThigh.node));
+        glm::quat axisDiff    = glm::normalize(glm::inverse(swingWorld) * targetWorld);
+        glm::quat twistOnly   = extractTwist(axisDiff, glm::vec3(0.0f, -1.0f, 0.0f));
+        animatedLocalRotations[rightThigh.node] =
+            glm::normalize(animatedLocalRotations[rightThigh.node] * twistOnly);
+    }
+    computeGlobals();
+
+    // ── Left shin ──────────────────────────────────────────────────────────────
     glm::quat lSHWorld = glm::normalize(lTHWorld * leftShinLocal);
+
     applyWorldDirection(leftShin, lSHWorld * glm::vec3(0.0f, -1.0f, 0.0f));
     computeGlobals();
 
+    {
+        glm::quat swingWorld  = nodeWorldRotation(leftShin.node);
+        glm::quat targetWorld = glm::normalize(leftShinLocal * bindWorldRotation(leftShin.node));
+        glm::quat axisDiff    = glm::normalize(glm::inverse(swingWorld) * targetWorld);
+        glm::quat twistOnly   = extractTwist(axisDiff, glm::vec3(0.0f, -1.0f, 0.0f));
+        animatedLocalRotations[leftShin.node] =
+            glm::normalize(animatedLocalRotations[leftShin.node] * twistOnly);
+    }
+    computeGlobals();
+
+    // ── Right shin ─────────────────────────────────────────────────────────────
     glm::quat rSHWorld = glm::normalize(rTHWorld * rightShinLocal);
+
     applyWorldDirection(rightShin, rSHWorld * glm::vec3(0.0f, -1.0f, 0.0f));
     computeGlobals();
+
+    {
+        glm::quat swingWorld  = nodeWorldRotation(rightShin.node);
+        glm::quat targetWorld = glm::normalize(rightShinLocal * bindWorldRotation(rightShin.node));
+        glm::quat axisDiff    = glm::normalize(glm::inverse(swingWorld) * targetWorld);
+        glm::quat twistOnly   = extractTwist(axisDiff, glm::vec3(0.0f, -1.0f, 0.0f));
+        animatedLocalRotations[rightShin.node] =
+            glm::normalize(animatedLocalRotations[rightShin.node] * twistOnly);
+    }
+    computeGlobals();
+}
+
+static glm::quat invertYaw(const glm::quat& q)
+{
+    // Sensor AHRS yaw convention is opposite-handed to render world Y-up.
+    // Negating the quaternion's y-component flips yaw sense only —
+    // pitch and roll (x, z components) are untouched.
+    return glm::quat(q.w, q.x, -q.y, q.z);
 }
 
 void GltfModel::updateTorsoBones(const glm::quat& hipsWorld, const glm::quat& chestWorld)
 {
-    applyWorldDirection(hips,  hipsWorld  * glm::vec3(0.0f, 1.0f, 0.0f));
-    computeGlobals();
-    applyWorldDirection(chest, chestWorld * glm::vec3(0.0f, 1.0f, 0.0f));
-    computeGlobals();
+    // Full quaternion-driven torso.
+    //
+    // 1) Neutral capture: don't assume the sensor reads identity at rest.
+    //    Accel/gyro-only IMU correction zeroes pitch/roll against gravity but
+    //    leaves an arbitrary residual yaw at rest — invisible to the old
+    //    direction-vector code (pure yaw doesn't move "up"), but fatal once
+    //    the full quaternion drives the bone directly. Capture the live
+    //    reading once and drive off the delta from that baseline instead of
+    //    off the raw quaternion.
+    //
+    // 2) Yaw handedness: the sensor's AHRS yaw convention is opposite-handed
+    //    to render world Y-up, so the raw delta's yaw sense is inverted
+    //    before use. Pitch/roll are unaffected by this correction.
+    //
+    // 3) target.alignment holds each bone's bind-pose world rotation
+    //    (cached once in load()). Composing the corrected delta onto it
+    //    gives the bone's exact desired world orientation:
+    //        B(t) = invertYaw(S(t) * inverse(S(neutral))) * bindWorldRotation(node)
+    //    At S(t) == S(neutral) this reduces to bindWorldRotation(node)
+    //    exactly, reproducing the rest pose.
+    if (!torsoNeutralCaptured) {
+        hipsNeutralSensor    = hipsWorld;
+        chestNeutralSensor   = chestWorld;
+        torsoNeutralCaptured = true;
+    }
+
+    glm::quat hipsDelta  = invertYaw(glm::normalize(hipsWorld  * glm::inverse(hipsNeutralSensor)));
+    glm::quat chestDelta = invertYaw(glm::normalize(chestWorld * glm::inverse(chestNeutralSensor)));
+
+    if (hips.valid) {
+        glm::quat hipsTargetWorld = glm::normalize(hipsDelta * hips.alignment);
+        applyWorldRotation(hips, hipsTargetWorld);
+        computeGlobals();
+    }
+
+    if (chest.valid) {
+        glm::quat chestTargetWorld = glm::normalize(chestDelta * chest.alignment);
+        applyWorldRotation(chest, chestTargetWorld);
+        computeGlobals();
+    }
+}
+
+// Returns the T-pose world rotation of a node extracted from bindGlobals.
+glm::quat GltfModel::bindWorldRotation(int nodeIndex) const
+{
+    glm::mat3 basis(bindGlobals[nodeIndex]);
+    basis[0] = glm::normalize(basis[0]);
+    basis[1] = glm::normalize(basis[1]);
+    basis[2] = glm::normalize(basis[2]);
+    return glm::normalize(glm::quat_cast(basis));
 }
 
 void GltfModel::applyWorldRotation(const BoneTarget& target, const glm::quat& worldRotation)
@@ -443,6 +683,237 @@ glm::vec3 GltfModel::nodeWorldPosition(int nodeIndex) const
 {
     glm::vec4 p = bindGlobals[nodeIndex] * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
     return glm::vec3(p) / p.w;
+}
+
+glm::vec3 GltfModel::animatedWorldPosition(int nodeIndex) const
+{
+    glm::vec4 p = animatedGlobals[nodeIndex] * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    return glm::vec3(p) / p.w;
+}
+
+void GltfModel::updateSensorMarkers()
+{
+    sensorMarkers.clear();
+
+    if (!hips.valid || !chest.valid || !leftArm.valid || !rightArm.valid ||
+        !leftForeArm.valid || !rightForeArm.valid || !leftThigh.valid ||
+        !rightThigh.valid || !leftShin.valid || !rightShin.valid) {
+        return;
+    }
+
+    glm::vec3 hipPos    = animatedWorldPosition(hips.node);
+    glm::vec3 chestPos  = animatedWorldPosition(chest.node);
+    glm::vec3 lShoulder = animatedWorldPosition(leftArm.node);
+    glm::vec3 rShoulder = animatedWorldPosition(rightArm.node);
+    glm::vec3 lElbow    = animatedWorldPosition(leftArm.child);
+    glm::vec3 rElbow    = animatedWorldPosition(rightArm.child);
+    glm::vec3 lWrist    = animatedWorldPosition(leftForeArm.child);
+    glm::vec3 rWrist    = animatedWorldPosition(rightForeArm.child);
+    glm::vec3 lHipJ     = animatedWorldPosition(leftThigh.node);
+    glm::vec3 rHipJ     = animatedWorldPosition(rightThigh.node);
+    glm::vec3 lKnee     = animatedWorldPosition(leftThigh.child);
+    glm::vec3 rKnee     = animatedWorldPosition(rightThigh.child);
+    glm::vec3 lAnkle    = animatedWorldPosition(leftShin.child);
+    glm::vec3 rAnkle    = animatedWorldPosition(rightShin.child);
+
+    glm::vec3 up     = glm::normalize(chestPos - hipPos);
+    glm::vec3 across = glm::normalize(rShoulder - lShoulder);
+    glm::vec3 front  = glm::normalize(glm::cross(up, across));
+    float torsoScale = glm::length(chestPos - hipPos);
+    markerRadius          = torsoScale * kMarkerRadiusFrac;
+    markerUpDir           = up;
+    orientationLineLength = torsoScale * kOrientationLineFrac;
+
+    auto lateralOffset = [&](const glm::vec3& mid, const glm::vec3& refCenter) {
+        glm::vec3 raw = mid - refCenter;
+        glm::vec3 horiz = raw - up * glm::dot(raw, up);
+        float len = glm::length(horiz);
+        return len > 1e-5f ? horiz / len : front;
+    };
+
+    auto addMidpointMarker = [&](const char* label, const glm::vec3& a, const glm::vec3& b,
+                                  const glm::vec3& dir, float frac) {
+        glm::vec3 mid = 0.5f * (a + b);
+        float boneLen = glm::length(b - a);
+        sensorMarkers.push_back({label, mid + dir * boneLen * frac});
+    };
+
+    sensorMarkers.push_back({"CHEST", chestPos + front * torsoScale * kChestFrontFrac
+                                                - up    * torsoScale * kChestDownFrac});
+    sensorMarkers.push_back({"HIPS", hipPos + front * torsoScale * 0.4f
+                                                - up    * torsoScale * kHipsDownFrac});;
+    /*sensorMarkers.push_back({"L_UA", findArmSurfaceMarker(leftArm.node, leftArm.child, lShoulder, lElbow,
+                                       lateralOffset(0.5f * (lShoulder + lElbow), chestPos), kUALateralFrac)});
+    sensorMarkers.push_back({"R_UA", findArmSurfaceMarker(rightArm.node, rightArm.child, rShoulder, rElbow,
+                                       lateralOffset(0.5f * (rShoulder + rElbow), chestPos), kUALateralFrac)});
+    sensorMarkers.push_back({"L_FA", findArmSurfaceMarker(leftForeArm.node, leftForeArm.child, lElbow, lWrist,
+                                    -across, kFAFrac)});
+    sensorMarkers.push_back({"R_FA", findArmSurfaceMarker(rightForeArm.node, rightForeArm.child, rElbow, rWrist,
+                                    across, kFAFrac)});*/
+    addMidpointMarker("L_UA", lShoulder, lElbow,  front, 0.25f);
+    addMidpointMarker("R_UA", rShoulder, rElbow,  front, 0.25f);
+    addMidpointMarker("L_FA", lElbow, lWrist, front, 0.25f);
+    addMidpointMarker("R_FA", rElbow, rWrist, front, 0.25f);
+    addMidpointMarker("L_TH", lHipJ, lKnee,  front, 0.25f);
+    addMidpointMarker("R_TH", rHipJ, rKnee,  front, 0.25f);
+    addMidpointMarker("L_SH", lKnee, lAnkle, front, 0.15f);
+    addMidpointMarker("R_SH", rKnee, rAnkle, front, 0.15f);
+}
+
+void GltfModel::drawSensorMarkers()
+{
+    glDisable(GL_LIGHTING);
+
+    glDepthMask(GL_FALSE);
+    glColor4f(0.25f, 1.0f, 0.35f, 0.30f);
+    for (const SensorMarker& marker : sensorMarkers) {
+        glPushMatrix();
+        glTranslatef(marker.worldPos.x, marker.worldPos.y, marker.worldPos.z);
+        glutSolidSphere(markerRadius * 1.8, 12, 12);
+        glPopMatrix();
+    }
+    glDepthMask(GL_TRUE);
+
+    glColor4f(0.45f, 1.0f, 0.5f, 1.0f);
+    for (const SensorMarker& marker : sensorMarkers) {
+        glPushMatrix();
+        glTranslatef(marker.worldPos.x, marker.worldPos.y, marker.worldPos.z);
+        glutSolidSphere(markerRadius, 12, 12);
+        glPopMatrix();
+    }
+
+    glColor3f(0.3f, 1.0f, 0.3f);
+    glLineWidth(2.5f);
+    glBegin(GL_LINES);
+    for (const SensorMarker& marker : sensorMarkers) {
+        glm::vec3 tip = marker.worldPos + markerUpDir * orientationLineLength;
+        glVertex3f(marker.worldPos.x, marker.worldPos.y, marker.worldPos.z);
+        glVertex3f(tip.x, tip.y, tip.z);
+    }
+    glEnd();
+    glLineWidth(1.0f);
+
+    for (const SensorMarker& marker : sensorMarkers) {
+        glm::vec3 tip = marker.worldPos + markerUpDir * orientationLineLength;
+        glPushMatrix();
+        glTranslatef(tip.x, tip.y, tip.z);
+        glm::vec3 axis = glm::cross(glm::vec3(0.0f, 0.0f, 1.0f), markerUpDir);
+        float angle = glm::degrees(std::acos(glm::clamp(markerUpDir.z, -1.0f, 1.0f)));
+        if (glm::length(axis) > 1e-5f) {
+            glRotatef(angle, axis.x, axis.y, axis.z);
+        }
+        glutSolidCone(markerRadius * 0.6, markerRadius * 1.4, 8, 1);
+        glPopMatrix();
+    }
+
+    glColor3f(0.65f, 1.0f, 0.7f);
+    for (const SensorMarker& marker : sensorMarkers)
+    {
+        bool rightSide =
+            marker.label.rfind("R_", 0) == 0;
+
+        float xOffset =
+            rightSide ?
+            -markerRadius * 4.5f :
+            markerRadius * 1.6f;
+
+        glRasterPos3f(
+            marker.worldPos.x + xOffset,
+            marker.worldPos.y + markerRadius * 1.6f,
+            marker.worldPos.z);
+
+        for (char c : marker.label)
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, c);
+    }
+
+    glEnable(GL_LIGHTING);
+}
+
+bool GltfModel::findJointSlot(int nodeIndex, int& skinIndexOut, int& jointSlotOut) const
+{
+    for (size_t s = 0; s < skins.size(); ++s) {
+        const Skin& skin = skins[s];
+        for (size_t j = 0; j < skin.joints.size(); ++j) {
+            if (skin.joints[j] == nodeIndex) {
+                skinIndexOut = static_cast<int>(s);
+                jointSlotOut = static_cast<int>(j);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+glm::vec3 GltfModel::skinnedVertexWorldPosition(const Vertex& vertex, const Skin& skin) const
+{
+    glm::vec4 skinned(0.0f);
+    bool any = false;
+    for (int i = 0; i < 4; ++i) {
+        float weight = vertex.weights[i];
+        if (weight <= 0.0f) continue;
+        any = true;
+        glm::mat4 m = skinMatrix(skin, vertex.joints[i]);
+        skinned += weight * (m * glm::vec4(vertex.position, 1.0f));
+    }
+    return any ? glm::vec3(skinned) : vertex.position;
+}
+
+glm::vec3 GltfModel::findArmSurfaceMarker(int jointNode, int childNode,
+                                          const glm::vec3& jointPos, const glm::vec3& childPos,
+                                          const glm::vec3& desiredDir, float fallbackFrac) const
+{
+    int skinIndex = -1, jointSlot = -1;
+    float boneLen = glm::length(childPos - jointPos);
+    glm::vec3 fallback = 0.5f * (jointPos + childPos) + desiredDir * boneLen * fallbackFrac;
+
+    if (!findJointSlot(jointNode, skinIndex, jointSlot)) return fallback;
+
+    const Skin& skin = skins[skinIndex];
+    glm::vec3 axisDir = boneLen > 1e-5f ? (childPos - jointPos) / boneLen : glm::vec3(0.0f, -1.0f, 0.0f);
+
+    glm::vec3 bestPoint = fallback;
+    float bestScore = -1e9f;
+    bool found = false;
+
+    for (const MeshInstance& mesh : meshes) {
+        if (mesh.skinIndex != skinIndex) continue;
+        for (const Primitive& primitive : mesh.primitives) {
+            for (const Vertex& vertex : primitive.vertices) {
+                bool dominant = false;
+                for (int i = 0; i < 4; ++i) {
+                    if (vertex.weights[i] > 0.5f && vertex.joints[i] == jointSlot) {
+                        dominant = true;
+                        break;
+                    }
+                }
+                if (!dominant) continue;
+
+                glm::vec3 worldPos = skinnedVertexWorldPosition(vertex, skin);
+                float t = glm::dot(worldPos - jointPos, axisDir);
+                if (t < boneLen * 0.25f || t > boneLen * 0.75f) continue;
+
+                glm::vec3 axisPoint = jointPos + axisDir * t;
+                glm::vec3 perp = worldPos - axisPoint;
+                float perpLen = glm::length(perp);
+                if (perpLen < 1e-5f) continue;
+
+                float alignment = glm::dot(perp / perpLen, desiredDir);
+                float score = alignment * perpLen;
+                if (score > bestScore) {
+                    bestScore = score;
+
+                    glm::vec3 axisPoint = jointPos + axisDir * t;
+
+                    // Move 20% from skin vertex toward bone center
+                    bestPoint = glm::mix(worldPos, axisPoint, 0.20f);
+
+                    found = true;
+                }
+            }
+        }
+    }
+
+    return found ? bestPoint : fallback;
 }
 
 glm::quat GltfModel::nodeWorldRotation(int nodeIndex) const
