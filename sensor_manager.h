@@ -263,5 +263,6 @@ private:
     void autoRecalibrate(glm::quat& calibRef,
                          glm::quat& lastQ,
                          float& stationaryTimer,
-                         const glm::quat& current) const;
+                         const glm::quat& current,
+                         bool sensorFresh) const;
 };

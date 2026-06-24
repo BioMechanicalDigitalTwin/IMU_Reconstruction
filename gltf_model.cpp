@@ -12,8 +12,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-static glm::quat yawOnly(const glm::quat& q);
-
 namespace {
 glm::mat4 readMat4(const cgltf_accessor* accessor, cgltf_size index)
 {
@@ -567,7 +565,7 @@ void GltfModel::updateLegBones(const glm::quat& leftThighLocal,
     computeGlobals();
 }
 
-static glm::quat yawOnly(const glm::quat& q)
+glm::quat yawOnly(const glm::quat& q)
 {
     glm::vec3 axis(q.x, q.y, q.z);
     glm::vec3 proj = glm::dot(axis, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec3(0.0f, 1.0f, 0.0f);

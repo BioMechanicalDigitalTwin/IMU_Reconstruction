@@ -112,18 +112,20 @@ glm::quat SensorManager::smoothCorrectedQuat(glm::quat& current,
     return current;
 }
 
-void SensorManager::autoRecalibrate(glm::quat& calibRef,
-                                     glm::quat& lastQ,
-                                     float& stationaryTimer,
-                                     const glm::quat& current) const
+void SensorManager::autoRecalibrate(glm::quat& calibRef, glm::quat& lastQ,
+                                     float& stationaryTimer, const glm::quat& current,
+                                     bool sensorFresh) const
 {
+    if (!sensorFresh) {
+        stationaryTimer = 0.0f;
+        lastQ = current;   // don't let a stale value count as "held still"
+        return;
+    }
     const float angle = 2.0f * std::acos(
         std::clamp(std::abs(glm::dot(lastQ, current)), 0.0f, 1.0f));
 
     if (angle < kStationaryThreshold) {
         stationaryTimer += 16.0f;
-        if (stationaryTimer > kStationaryTimeMs)
-            calibRef = glm::normalize(glm::slerp(calibRef, current, kDriftCorrAlpha));
     } else {
         stationaryTimer = 0.0f;
     }
@@ -254,7 +256,8 @@ glm::quat SensorManager::getCorrectedLFAQuat() const
     {
         std::lock_guard<std::mutex> l(quatMutex1);
         std::lock_guard<std::mutex> lc(calibMutex1);
-        autoRecalibrate(calibrationReferenceLFA, lastQLFA, stationaryTimerLFA, sensorQuatLFA);
+        bool fresh = notTimedOut(lastReceivedLFA, kSensorTimeoutMs);
+        autoRecalibrate(calibrationReferenceLFA, lastQLFA, stationaryTimerLFA, sensorQuatLFA, fresh);
         childRawCorrected = computeCorrectedQuat(sensorQuatLFA, calibrationReferenceLFA);
     }
     glm::quat rawLocal = glm::normalize(glm::inverse(parentRawCorrected) * childRawCorrected);
@@ -280,7 +283,8 @@ glm::quat SensorManager::getCorrectedRFAQuat() const
     {
         std::lock_guard<std::mutex> l(quatMutex2);
         std::lock_guard<std::mutex> lc(calibMutex2);
-        autoRecalibrate(calibrationReferenceRFA, lastQRFA, stationaryTimerRFA, sensorQuatRFA);
+        bool fresh = notTimedOut(lastReceivedRFA, kSensorTimeoutMs);
+        autoRecalibrate(calibrationReferenceRFA, lastQRFA, stationaryTimerRFA, sensorQuatRFA, fresh);
         childRawCorrected = computeCorrectedQuat(sensorQuatRFA, calibrationReferenceRFA);
     }
     glm::quat rawLocal = glm::normalize(glm::inverse(parentRawCorrected) * childRawCorrected);
@@ -307,7 +311,8 @@ glm::quat SensorManager::getCorrectedLUAQuat() const
     {
         std::lock_guard<std::mutex> l(quatMutex3);
         std::lock_guard<std::mutex> lc(calibMutex3);
-        autoRecalibrate(calibrationReference3, lastQ3, stationaryTimer3, sensorQuat3);
+        bool fresh = notTimedOut(lastReceivedLUA, kSensorTimeoutMs);
+        autoRecalibrate(calibrationReference3, lastQ3, stationaryTimer3, sensorQuat3, fresh);
         childRawCorrected = computeCorrectedQuat(sensorQuat3, calibrationReference3);
     }
     glm::quat rawLocal = glm::normalize(glm::inverse(parentRawCorrected) * childRawCorrected);
@@ -333,7 +338,8 @@ glm::quat SensorManager::getCorrectedRUAQuat() const
     {
         std::lock_guard<std::mutex> l(quatMutex4);
         std::lock_guard<std::mutex> lc(calibMutex4);
-        autoRecalibrate(calibrationReferenceRUA, lastQRUA, stationaryTimerRUA, sensorQuatRUA);
+        bool fresh = notTimedOut(lastReceivedRUA, kSensorTimeoutMs);
+        autoRecalibrate(calibrationReferenceRUA, lastQRUA, stationaryTimerRUA, sensorQuatRUA, fresh);
         childRawCorrected = computeCorrectedQuat(sensorQuatRUA, calibrationReferenceRUA);
     }
     glm::quat rawLocal = glm::normalize(glm::inverse(parentRawCorrected) * childRawCorrected);
@@ -360,7 +366,8 @@ glm::quat SensorManager::getCorrectedLTHQuat() const
     {
         std::lock_guard<std::mutex> l(quatMutex5);
         std::lock_guard<std::mutex> lc(calibMutex5);
-        autoRecalibrate(calibrationReference5, lastQ5, stationaryTimer5, sensorQuat5);
+        bool fresh = notTimedOut(lastReceivedLTH, kSensorTimeoutMs);
+        autoRecalibrate(calibrationReference5, lastQ5, stationaryTimer5, sensorQuat5, fresh);
         childRawCorrected = computeCorrectedQuat(sensorQuat5, calibrationReference5);
     }
     glm::quat rawLocal = glm::normalize(glm::inverse(parentRawCorrected) * childRawCorrected);
@@ -386,7 +393,8 @@ glm::quat SensorManager::getCorrectedLSHQuat() const
     {
         std::lock_guard<std::mutex> l(quatMutex6);
         std::lock_guard<std::mutex> lc(calibMutex6);
-        autoRecalibrate(calibrationReference6, lastQ6, stationaryTimer6, sensorQuat6);
+        bool fresh = notTimedOut(lastReceivedLSH, kSensorTimeoutMs);
+        autoRecalibrate(calibrationReference6, lastQ6, stationaryTimer6, sensorQuat6, fresh);
         childRawCorrected = computeCorrectedQuat(sensorQuat6, calibrationReference6);
     }
     glm::quat rawLocal = glm::normalize(glm::inverse(parentRawCorrected) * childRawCorrected);
@@ -412,7 +420,8 @@ glm::quat SensorManager::getCorrectedRTHQuat() const
     {
         std::lock_guard<std::mutex> l(quatMutex7);
         std::lock_guard<std::mutex> lc(calibMutex7);
-        autoRecalibrate(calibrationReference7, lastQ7, stationaryTimer7, sensorQuat7);
+        bool fresh = notTimedOut(lastReceivedRTH, kSensorTimeoutMs);
+        autoRecalibrate(calibrationReference7, lastQ7, stationaryTimer7, sensorQuat7, fresh);
         childRawCorrected = computeCorrectedQuat(sensorQuat7, calibrationReference7);
     }
     glm::quat rawLocal = glm::normalize(glm::inverse(parentRawCorrected) * childRawCorrected);
@@ -438,7 +447,8 @@ glm::quat SensorManager::getCorrectedRSHQuat() const
     {
         std::lock_guard<std::mutex> l(quatMutex8);
         std::lock_guard<std::mutex> lc(calibMutex8);
-        autoRecalibrate(calibrationReference8, lastQ8, stationaryTimer8, sensorQuat8);
+        bool fresh = notTimedOut(lastReceivedRSH, kSensorTimeoutMs);
+        autoRecalibrate(calibrationReference8, lastQ8, stationaryTimer8, sensorQuat8, fresh);
         childRawCorrected = computeCorrectedQuat(sensorQuat8, calibrationReference8);
     }
     glm::quat rawLocal = glm::normalize(glm::inverse(parentRawCorrected) * childRawCorrected);
@@ -455,15 +465,25 @@ glm::quat SensorManager::getCorrectedRSHQuat() const
 glm::quat SensorManager::getCorrectedHipsQuat() const
 {
     auto q = getHipsQuat();
+    bool fresh;
+    {
+        std::lock_guard<std::mutex> l(quatMutex9);
+        fresh = notTimedOut(lastReceivedHips, kSensorTimeoutMs);
+    }
     std::lock_guard<std::mutex> l(calibMutex9);
-    autoRecalibrate(calibrationReference9, lastQ9, stationaryTimer9, q);
+    autoRecalibrate(calibrationReference9, lastQ9, stationaryTimer9, q, fresh);
     return smoothCorrectedQuat(smoothedCorrected9, hasSmoothedCorrected9, computeCorrectedQuat(q, calibrationReference9));
 }
 
 glm::quat SensorManager::getCorrectedChestQuat() const
 {
     auto q = getChestQuat();
+    bool fresh;
+    {
+        std::lock_guard<std::mutex> l(quatMutex10);
+        fresh = notTimedOut(lastReceivedChest, kSensorTimeoutMs);
+    }
     std::lock_guard<std::mutex> l(calibMutex10);
-    autoRecalibrate(calibrationReference10, lastQ10, stationaryTimer10, q);
+    autoRecalibrate(calibrationReference10, lastQ10, stationaryTimer10, q, fresh);
     return smoothCorrectedQuat(smoothedCorrected10, hasSmoothedCorrected10, computeCorrectedQuat(q, calibrationReference10));
 }

@@ -10,6 +10,7 @@
 #include "renderer.h"
 #include "input_handler.h"
 #include "csv_logger.h"
+#include "gltf_model.h"
 
 static GLFWwindow* g_window = nullptr;
 
@@ -84,6 +85,9 @@ int main()
         glm::quat hipsWorld  = correctedHips;
         glm::quat chestWorld = correctedChest;
 
+        // Legs are driven against a yaw-only hips reference (pelvis pitch/roll should not swing the legs — only twisting at the waist should).
+        glm::quat hipsYawOnlyForLegs = yawOnly(hipsWorld);
+
         glm::quat localLUA = sensorManager.isLUAActive()
             ? localRelativeTo(chestWorld, correctedLUA)
             : glm::quat(1,0,0,0);
@@ -101,11 +105,11 @@ int main()
             : glm::quat(1,0,0,0);
 
         glm::quat localLTH = sensorManager.isLTHActive()
-            ? localRelativeTo(hipsWorld, correctedLTH)
+            ? localRelativeTo(hipsYawOnlyForLegs, correctedLTH)
             : glm::quat(1,0,0,0);
 
         glm::quat localRTH = sensorManager.isRTHActive()
-            ? localRelativeTo(hipsWorld, correctedRTH)
+            ? localRelativeTo(hipsYawOnlyForLegs, correctedRTH)
             : glm::quat(1,0,0,0);
 
         glm::quat localLSH = sensorManager.isLSHActive()

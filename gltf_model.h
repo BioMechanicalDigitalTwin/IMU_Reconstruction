@@ -7,6 +7,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+// Shared with main.cpp so the thigh/shin local rotations are built against the SAME pitch-stripped hips reference that updateLegBones() 
+glm::quat yawOnly(const glm::quat& q);
+
 struct SensorMarker {
     std::string label;
     glm::vec3 worldPos;

@@ -18,12 +18,22 @@ bool CsvLogger::ensureDir(const std::string& dir)
 
 std::string CsvLogger::makeFilepath()
 {
-    std::time_t t = std::time(nullptr);
-    std::tm tm{};
-    localtime_r(&t, &tm);
-    char buf[64];
-    std::strftime(buf, sizeof(buf), "CSV/%Y%m%d_%H%M%S.csv", &tm);
-    return std::string(buf);
+    int run = 1;
+
+    while (true)
+    {
+        std::ostringstream ss;
+        ss << "CSV/run_"
+           << std::setw(3)
+           << std::setfill('0')
+           << run
+           << ".csv";
+
+        if (!std::filesystem::exists(ss.str()))
+            return ss.str();
+
+        ++run;
+    }
 }
 
 bool CsvLogger::open()
