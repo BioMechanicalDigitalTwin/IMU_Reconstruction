@@ -570,7 +570,7 @@ static glm::quat invertYaw(const glm::quat& q)
     // Sensor AHRS yaw convention is opposite-handed to render world Y-up.
     // Negating the quaternion's y-component flips yaw sense only —
     // pitch and roll (x, z components) are untouched.
-    return glm::quat(q.w, q.x, -q.y, q.z);
+    return glm::quat(q.w, -q.x, q.y, q.z);
 }
 
 void GltfModel::updateTorsoBones(const glm::quat& hipsWorld, const glm::quat& chestWorld)
