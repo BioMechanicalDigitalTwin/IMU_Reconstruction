@@ -1,11 +1,10 @@
 #include "input_handler.h"
+#include "renderer.h"
 #include <iostream>
 #include <sstream>
 
-InputHandler::InputHandler(SensorManager& sensorManager, CsvLogger& csvLogger)
-    : sensorManager(sensorManager), csvLogger(csvLogger)
-{
-}
+InputHandler::InputHandler(SensorManager& sensorManager, CsvLogger& csvLogger, Renderer& renderer)
+    : sensorManager(sensorManager), csvLogger(csvLogger), renderer(renderer) {}
 
 void InputHandler::handleKey(int key)
 {
@@ -24,7 +23,7 @@ void InputHandler::handleKey(int key)
     } else if (key == GLFW_KEY_M) {
         sensorManager.toggleQuaternionConvention();
         csvLogger.markCalibration("MODE_" + std::to_string(sensorManager.getQuaternionMode() + 1));
-    } else if (key == GLFW_KEY_P) {                           // ← NEW
+    } else if (key == GLFW_KEY_P) {
         sensorManager.toggleVerticalOffset();
         csvLogger.markCalibration("VERTICAL_TOGGLE");
     } else if (key == GLFW_KEY_L) {
@@ -45,9 +44,11 @@ void InputHandler::handleKey(int key)
     } else if (key == GLFW_KEY_I) {
         sensorManager.calibrateHips();
         csvLogger.markCalibration("HIPS");
+        renderer.resetTorsoNeutral();
     } else if (key == GLFW_KEY_O) {
         sensorManager.calibrateChest();
         csvLogger.markCalibration("CHEST");
+        renderer.resetTorsoNeutral();
     } else if (key == GLFW_KEY_SPACE) {
         std::streambuf* oldBuf = std::cout.rdbuf();
         std::ostringstream temp;
@@ -70,6 +71,7 @@ void InputHandler::handleKey(int key)
                   << "L_TH, L_SH, R_TH, R_SH, "
                   << "HIPS, CHEST\n";
         csvLogger.markCalibration("ALL");
+        renderer.resetTorsoNeutral();
     }
 }
 

@@ -18,6 +18,7 @@ public:
                 bool placementGuideMode);
     void setCameraView(CameraView view) { cameraView = view; }
     void cycleCameraView();
+    void resetTorsoNeutral() { humanModel.resetTorsoNeutral(); }
 
 private:
     CameraView cameraView = CameraView::FRONT;

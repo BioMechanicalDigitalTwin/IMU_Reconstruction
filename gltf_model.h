@@ -28,6 +28,9 @@ public:
               const glm::quat& chestWorld,
               const glm::quat& hipsWorld,
               bool placementGuideMode = false);
+    
+
+    void resetTorsoNeutral() { torsoNeutralCaptured = false; }
 
 private:
     struct Vertex {

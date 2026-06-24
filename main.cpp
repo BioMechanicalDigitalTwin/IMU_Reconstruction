@@ -36,15 +36,15 @@ int main()
     g_window = window;
     glfwMakeContextCurrent(window);
 
+    Renderer renderer;
+    renderer.initialize();
+
     CsvLogger csvLogger;
     csvLogger.open();
 
-    InputHandler inputHandler(sensorManager, csvLogger);
+    InputHandler inputHandler(sensorManager, csvLogger, renderer);
     glfwSetKeyCallback(window, keyCallbackDispatcher);
     glfwSetWindowUserPointer(window, &inputHandler);
-
-    Renderer renderer;
-    renderer.initialize();
 
     while(!glfwWindowShouldClose(window))
     {
