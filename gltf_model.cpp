@@ -12,6 +12,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+static glm::quat invertYaw(const glm::quat& q);
+static glm::quat yawOnly(const glm::quat& q);
+
 namespace {
 glm::mat4 readMat4(const cgltf_accessor* accessor, cgltf_size index)
 {
@@ -315,7 +318,7 @@ void GltfModel::draw(const glm::quat& leftForearmLocal,
                    chestWorld);
 
     updateLegBones(leftThighLocal, rightThighLocal,
-                   leftShinLocal, rightShinLocal, hipsWorld);
+                   leftShinLocal, rightShinLocal, yawOnly(hipsWorld));
 
     glPushMatrix();
     glScalef(9.7f, 9.7f, 9.7f);
@@ -571,6 +574,13 @@ static glm::quat invertYaw(const glm::quat& q)
     // Negating the quaternion's y-component flips yaw sense only —
     // pitch and roll (x, z components) are untouched.
     return glm::quat(q.w, -q.x, q.y, q.z);
+}
+
+static glm::quat yawOnly(const glm::quat& q)
+{
+    glm::vec3 axis(q.x, q.y, q.z);
+    glm::vec3 proj = glm::dot(axis, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec3(0.0f, 1.0f, 0.0f);
+    return glm::normalize(glm::quat(q.w, proj.x, proj.y, proj.z));
 }
 
 void GltfModel::updateTorsoBones(const glm::quat& hipsWorld, const glm::quat& chestWorld)
