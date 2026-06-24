@@ -115,6 +115,20 @@ bool GltfModel::load(const std::string& path)
         nodeMap[&src] = static_cast<int>(i);
     }
 
+    // ─── BAKE 90° INWARD FOREARM TWIST INTO THE BIND POSE ───
+    // This makes the model treat pronated (palm‑in) as its neutral rest.
+    // The rotation is applied around the bone's local Y axis (elbow→wrist).
+    for (auto& node : nodes) {
+        if (node.name == "mixamorig:LeftForeArm" || node.name == "mixamorig:LeftUpperArm") {
+            glm::quat inward = glm::angleAxis(glm::radians( 90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            node.rotation = glm::normalize(node.rotation * inward);
+        }
+        if (node.name == "mixamorig:RightForeArm" || node.name == "mixamorig:RightUpperArm") {
+            glm::quat inward = glm::angleAxis(glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            node.rotation = glm::normalize(node.rotation * inward);
+        }
+    }
+
     for (cgltf_size i = 0; i < data->nodes_count; ++i) {
         const cgltf_node& src = data->nodes[i];
         Node& dst = nodes[i];
