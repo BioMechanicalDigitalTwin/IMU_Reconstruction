@@ -329,30 +329,33 @@ void GltfModel::updateArmBones(const glm::quat& leftForearmLocal,
                                const glm::quat& rightUpperArmLocal,
                                const glm::quat& chestWorldQ)
 {
-    // Global matrices must be up‑to‑date before we read parent world rotations
     computeGlobals();
 
+    // Left upper arm — keep X-flip (left arm bind points in -X)
     glm::quat lUAWorld = glm::normalize(chestWorldQ * leftUpperArmLocal);
     glm::vec3 lUADir = lUAWorld * glm::vec3(0.0f, -1.0f, 0.2f);
     lUADir.x = -lUADir.x;
     applyWorldDirection(leftArm, lUADir);
     computeGlobals();
 
+    // Right upper arm — NO X-flip (right arm bind points in +X)
     glm::quat rUAWorld = glm::normalize(chestWorldQ * rightUpperArmLocal);
     glm::vec3 rUADir = rUAWorld * glm::vec3(0.0f, -1.0f, 0.2f);
-    rUADir.x = -rUADir.x;
+    // rUADir.x = -rUADir.x;   ← remove this
     applyWorldDirection(rightArm, rUADir);
     computeGlobals();
 
+    // Left forearm — keep X-flip
     glm::quat lFAWorld = glm::normalize(lUAWorld * leftForearmLocal);
     glm::vec3 lFADir = lFAWorld * glm::vec3(0.0f, -1.0f, 0.2f);
     lFADir.x = -lFADir.x;
     applyWorldDirection(leftForeArm, lFADir, 0.0f);
     computeGlobals();
 
+    // Right forearm — NO X-flip
     glm::quat rFAWorld = glm::normalize(rUAWorld * rightForearmLocal);
     glm::vec3 rFADir = rFAWorld * glm::vec3(0.0f, -1.0f, 0.2f);
-    rFADir.x = -rFADir.x;
+    // rFADir.x = -rFADir.x;   ← remove this
     applyWorldDirection(rightForeArm, rFADir, 0.0f);
     computeGlobals();
 }
