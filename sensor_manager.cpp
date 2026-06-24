@@ -86,9 +86,8 @@ glm::quat SensorManager::computeCorrectedQuat(const glm::quat& sensorQuat,
                                                const glm::quat& calibrationReference) const
 {
     glm::quat delta = computeMotionDelta(sensorQuat, calibrationReference, verticalMode.load());
-    delta = glm::conjugate(delta); 
     glm::quat q = glm::normalize(delta * neutralPose());
-    q.y = -q.y;
+    q.x = -q.x;
     q.z = -q.z;
     return glm::normalize(q);
 }

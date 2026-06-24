@@ -329,34 +329,25 @@ void GltfModel::updateArmBones(const glm::quat& leftForearmLocal,
                                const glm::quat& rightUpperArmLocal,
                                const glm::quat& chestWorldQ)
 {
+    // Global matrices must be up‑to‑date before we read parent world rotations
     computeGlobals();
 
-    // Left upper arm — keep X-flip (left arm bind points in -X)
+    // Upper arms = chestWorld * localArm
     glm::quat lUAWorld = glm::normalize(chestWorldQ * leftUpperArmLocal);
-    glm::vec3 lUADir = lUAWorld * glm::vec3(0.0f, -1.0f, 0.2f);
-    lUADir.x = -lUADir.x;
-    applyWorldDirection(leftArm, lUADir);
+    applyWorldDirection(leftArm, lUAWorld * glm::vec3(0.0f, -1.0f, -0.2f));
     computeGlobals();
 
-    // Right upper arm — NO X-flip (right arm bind points in +X)
     glm::quat rUAWorld = glm::normalize(chestWorldQ * rightUpperArmLocal);
-    glm::vec3 rUADir = rUAWorld * glm::vec3(0.0f, -1.0f, 0.2f);
-    // rUADir.x = -rUADir.x;   ← remove this
-    applyWorldDirection(rightArm, rUADir);
+    applyWorldDirection(rightArm, rUAWorld * glm::vec3(0.0f, -1.0f, -0.2f));
     computeGlobals();
 
-    // Left forearm — keep X-flip
+    // Forearms = upper arm world * local forearm
     glm::quat lFAWorld = glm::normalize(lUAWorld * leftForearmLocal);
-    glm::vec3 lFADir = lFAWorld * glm::vec3(0.0f, -1.0f, 0.2f);
-    lFADir.x = -lFADir.x;
-    applyWorldDirection(leftForeArm, lFADir, 0.0f);
+    applyWorldDirection(leftForeArm, lFAWorld * glm::vec3(0.0f, -1.0f, -0.2f));
     computeGlobals();
 
-    // Right forearm — NO X-flip
     glm::quat rFAWorld = glm::normalize(rUAWorld * rightForearmLocal);
-    glm::vec3 rFADir = rFAWorld * glm::vec3(0.0f, -1.0f, 0.2f);
-    // rFADir.x = -rFADir.x;   ← remove this
-    applyWorldDirection(rightForeArm, rFADir, 0.0f);
+    applyWorldDirection(rightForeArm, rFAWorld * glm::vec3(0.0f, -1.0f, -0.2f));
     computeGlobals();
 }
 
@@ -409,7 +400,7 @@ void GltfModel::applyWorldRotation(const BoneTarget& target, const glm::quat& wo
     animatedLocalRotations[target.node] = glm::normalize(glm::inverse(parentWorld) * worldRotation);
 }
 
-void GltfModel::applyWorldDirection(const BoneTarget& target, const glm::vec3& worldDirection, float twistDegrees)
+void GltfModel::applyWorldDirection(const BoneTarget& target, const glm::vec3& worldDirection)
 {
     if (!target.valid || glm::length(worldDirection) < 1e-6f) return;
 
@@ -425,15 +416,7 @@ void GltfModel::applyWorldDirection(const BoneTarget& target, const glm::vec3& w
     glm::vec3 currentDirection = glm::normalize(nodes[target.node].rotation * glm::normalize(childLocal));
     glm::vec3 targetDirection = glm::normalize(glm::inverse(parentWorld) * glm::normalize(worldDirection));
     glm::quat delta = rotationBetween(currentDirection, targetDirection);
-    
-    // Apply twist if needed
-    if (std::abs(twistDegrees) > 0.001f) {
-        // Apply twist around the bone's local axis
-        glm::quat twist = glm::angleAxis(glm::radians(twistDegrees), targetDirection);
-        animatedLocalRotations[target.node] = glm::normalize(twist * delta * nodes[target.node].rotation);
-    } else {
-        animatedLocalRotations[target.node] = glm::normalize(delta * nodes[target.node].rotation);
-    }
+    animatedLocalRotations[target.node] = glm::normalize(delta * nodes[target.node].rotation);
 }
 
 void GltfModel::prepareBoneTarget(BoneTarget& target, const char* nodeName, const char* childName)
