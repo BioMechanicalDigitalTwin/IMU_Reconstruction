@@ -67,7 +67,13 @@ void Renderer::render(
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    float aspect = (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT;
+    GLint vp[4];
+    glGetIntegerv(GL_VIEWPORT, vp);
+
+    int width  = vp[2];
+    int height = vp[3];
+
+    float aspect = (float)width / (float)height;
     glFrustum(-aspect * 0.5f, aspect * 0.5f, -0.5f, 0.5f, 1.5f, 200.0f);
 
     glMatrixMode(GL_MODELVIEW);
@@ -139,7 +145,13 @@ void Renderer::drawTrackingAxesHud(const glm::quat& lFAL,
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
     glLoadIdentity();
-    glOrtho(0.0, WINDOW_WIDTH, 0.0, WINDOW_HEIGHT, -1.0, 1.0);
+    GLint vp[4];
+    glGetIntegerv(GL_VIEWPORT, vp);
+
+    float width  = (float)vp[2];
+    float height = (float)vp[3];
+
+    glOrtho(0.0, width, 0.0, height, -1.0, 1.0);
 
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
@@ -150,10 +162,10 @@ void Renderer::drawTrackingAxesHud(const glm::quat& lFAL,
 
     const float scale = 18.0f;
     const float gap   = 60.0f;
-    const float x     = (float)WINDOW_WIDTH - 70.0f;
+    const float x     = width - 70.0f;
     const float x2    = x - 80.0f;
     const float x3    = x2 - 80.0f;
-    const float top   = (float)WINDOW_HEIGHT - 50.0f;
+    const float top   = height - 50.0f;
 
     auto drawLabel = [&](float px, float py, const char* text) {
         glColor3f(0.90f, 0.90f, 0.92f);

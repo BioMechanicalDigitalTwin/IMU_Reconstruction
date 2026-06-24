@@ -36,6 +36,18 @@ int main()
     g_window = window;
     glfwMakeContextCurrent(window);
 
+    int fbw, fbh;
+    glfwGetFramebufferSize(window, &fbw, &fbh);
+    glViewport(0, 0, fbw, fbh);
+
+    glfwSetFramebufferSizeCallback(
+        window,
+        [](GLFWwindow*, int w, int h)
+        {
+            glViewport(0, 0, w, h);
+        }
+    );
+
     Renderer renderer;
     renderer.initialize();
 
