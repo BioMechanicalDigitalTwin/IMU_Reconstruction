@@ -573,7 +573,7 @@ static glm::quat invertYaw(const glm::quat& q)
     // Sensor AHRS yaw convention is opposite-handed to render world Y-up.
     // Negating the quaternion's y-component flips yaw sense only —
     // pitch and roll (x, z components) are untouched.
-    return glm::quat(q.w, -q.x, q.y, q.z);
+    return glm::quat(q.w, q.x, -q.y, q.z);
 }
 
 static glm::quat yawOnly(const glm::quat& q)
@@ -611,8 +611,8 @@ void GltfModel::updateTorsoBones(const glm::quat& hipsWorld, const glm::quat& ch
         torsoNeutralCaptured = true;
     }
 
-    glm::quat hipsDelta  = invertYaw(glm::normalize(hipsWorld  * glm::inverse(hipsNeutralSensor)));
-    glm::quat chestDelta = invertYaw(glm::normalize(chestWorld * glm::inverse(chestNeutralSensor)));
+    glm::quat hipsDelta  = glm::normalize(hipsWorld  * glm::inverse(hipsNeutralSensor));
+    glm::quat chestDelta = glm::normalize(chestWorld * glm::inverse(chestNeutralSensor));
 
     if (hips.valid) {
         glm::quat hipsTargetWorld = glm::normalize(hipsDelta * hips.alignment);
