@@ -4,6 +4,7 @@
 #include <sstream>
 #include <iomanip>
 #include <ctime>
+#include <filesystem>
 #include <sys/stat.h>
 
 CsvLogger::CsvLogger()  = default;
