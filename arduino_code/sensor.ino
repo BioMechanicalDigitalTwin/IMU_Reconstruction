@@ -14,6 +14,23 @@
 const char* SENSOR_LABEL = "L_FA";
 uint8_t HUB_MAC[] = {0xE8, 0x3D, 0xC1, 0x9C, 0x50, 0x14};   // CHEST
 // ============================================================
+// Flash your sensor to get MAC Address
+// #include <WiFi.h>
+//
+// void setup() {
+//  Serial.begin(115200);
+//  delay(1000);
+//  WiFi.mode(WIFI_STA);
+//
+//  Serial.println("ESP32 Booted");
+//  Serial.print("MAC Address: ");
+//  Serial.println(WiFi.macAddress());
+// }
+
+// void loop() {
+//  // Nothing to do
+// }
+// =============================================================
 
 const int LED_RED   = 1;
 const int LED_GREEN = 0;
