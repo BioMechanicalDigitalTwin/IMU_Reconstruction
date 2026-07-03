@@ -7,8 +7,8 @@
 #include "MPU6050_6Axis_MotionApps612.h"
 
 const char* SELF_LABEL = "CHEST";
-const char* ssid       = "TP-Link_DF6C_Cave";
-const char* password   = "Caveiot@123";
+const char* ssid       = ""; //your wifi SSID
+const char* password   = ""; //your wifi password
 
 const char*  multicast_ip = "239.0.0.1";
 const unsigned int port   = 5005;
